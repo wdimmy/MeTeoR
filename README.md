@@ -1,5 +1,5 @@
 <p align='center'>
-  <img width='40%' src='https://github.com/wdimmy/MeTeoR/blob/main/MeTeoR.png' />
+  <img width='40%' src='https://raw.githubusercontent.com/wdimmy/MeTeoR/main/MeTeoR.png' />
 </p>
 
 --------------------------------------------------------------------------------
@@ -15,7 +15,7 @@ pluggable functional modules that can be directly reused by other researchers fo
 will keep continuous maintenance and updates to MeTeoR and provide more implementations from the latest research in DatalogMTL. Currently, 
 MeTeoR mainly consists of the following six modules:
 <p align='center'>
-  <img width='80%' src='https://github.com/wdimmy/MeTeoR/blob/main/modules.png' />
+  <img width='80%' src='https://raw.githubusercontent.com/wdimmy/MeTeoR/main/modules.png' />
 </p>
 
 Besides, MeTeoR provides the implementation for the following papers:
