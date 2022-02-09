@@ -1,0 +1,3 @@
+B(X):-A(X)
+B(X):-Boxminus[1,2]A(X)
+A(X):-Boxminus[10,12]B(X)

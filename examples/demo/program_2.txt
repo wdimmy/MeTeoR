@@ -1,0 +1,3 @@
+TransactionChain(X,Y) :- Transaction(X,Y), RedList(X)
+TransactionChain(X,Z) :- SOMETIME[-24,0] TransactionChain(X,Y), Transaction(Y,Z)
+ALWAYS[0,+inf) Suspect(Y) :-  TransactionChain(X,Y), HighRisk(Y)

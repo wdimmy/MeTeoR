@@ -1,0 +1,4 @@
+Immune(X):- NoSympt(X)Since[21,28]Vaccinated(X)
+Immune(X):- NegTest(X), Diamondminus[21,28]Vaccinated(X)
+Immune(X):- Diamondminus(10,183]Infected(X), Boxminus[0,10]NoSympt(X)
+NegTest(X):- Boxminus[0,5]Immune(X)
