@@ -1,0 +1,5 @@
+HasSpeed(V):-NonPresent(V)
+ShortStop(V):-HasSpeed(V), Boxminus[10,10]ZeroSpeed(V), Boxminus[20,20]HasSpeed(V)
+ShortStop(V):-HasSpeed(V), Boxminus[10,10]ZeroSpeed(V), Boxminus[20,20]ZeroSpeed(V), Boxminus[30,30]HasSpeed(V)
+ShortStop(V):-HasSpeed(V),Boxminus[10,10]ZeroSpeed(V), Boxminus[20,20]ZeroSpeed(V), Boxminus[30,30]ZeroSpeed(V), Boxminus[40,40]HasSpeed(V)
+ShortStop(V):-HasSpeed(V),Boxminus[10,10]ZeroSpeed(V), Boxminus[20,20]ZeroSpeed(V), Boxminus[30,30]ZeroSpeed(V),  Boxminus[40,40]ZeroSpeed(V), Boxminus[50,50]HasSpeed(V)

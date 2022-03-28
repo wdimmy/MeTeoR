@@ -11,6 +11,7 @@ examples/
 experiments/*
 !experiments/JWS/
 experiments/JWS/*
+!experiments/JWS/programs/
 !experiments/JWS/readme.md
 !experiments/JWS/sr_mock.py
 !experiments/JWS/meteor_mock.py

@@ -1,0 +1,4 @@
+a1:ScientistCandidate(X):-Diamondminus[1,2]a1:doctoralDegreeFrom(X,Y)
+a1:Scientist(X):-Boxminus[0,4]a1:ScientistCandidate(X)
+a1:Scientist(X):- Diamondminus[1,2]a1:FullProfessor(X)
+a1:FullProfessor(X):- Diamondminus[1,2]a1:Scientist(X)
