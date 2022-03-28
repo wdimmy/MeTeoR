@@ -1,3 +1,0 @@
-A(X):-Diamondminus[0,1]A(X)
-B(X):-C(X),D(X),A(X)
-B(X):-F(X),A(X)

@@ -131,7 +131,7 @@ def inclusion_check(D, rule, i, context, records, single=False):
     return flag
 
 
-def optimized_seminaive_join(rule, D,  delta_old, delta_new,  D_index=None, observe_rules=dict()):
+def optimized_seminaive_join(rule, D,  delta_old, delta_new,  D_index=None, records= {}, non_predicates=dict()):
     """
     This function implement the join operator when variables exist in the body of the rule.
     Args:

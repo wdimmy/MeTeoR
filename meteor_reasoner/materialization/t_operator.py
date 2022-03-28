@@ -22,8 +22,6 @@ def seminaive_immediate_consequence_operator(rules, D, D_index, delta_old=None):
 def optimize_seminaive_immediate_consequence_operator(rules, D, D_index, delta_old=None, non_predicates=[], records={}):
     delta_new = defaultdict(lambda: defaultdict(list))
     for i, rule in enumerate(rules):
-        if i == 2:
-            print("debug")
         optimized_seminaive_join(rule, D, delta_old, delta_new, D_index, records=records, non_predicates=non_predicates)
 
     return delta_new
