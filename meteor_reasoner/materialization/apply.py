@@ -100,21 +100,21 @@ def apply(literal, D):
     else:
         op_name = literal.get_op_name()
         if op_name in ["Until", "Since"]:
-            left_atom = literal.left_atom
-            right_atom = literal.right_atom
+            left_literal = literal.left_literal
+            right_literal = literal.right_literal
 
-            if left_atom.predicate == "Bottom" or right_atom.predicate == "Bottom":
+            if left_literal.get_predicate() == "Bottom" or right_literal.get_predicate() == "Bottom":
                 raise ValueError("It is not allowed to have the bottom predicate in the left side "
                                  "or the right side of a binary literal ")
-            if left_atom.predicate == "Top":
+            if left_literal.get_predicate() == "Top":
                 T1 = [Interval(float('-inf'), float('inf'), True, True)]
             else:
-                T1 = apply(left_atom, D)
+                T1 = apply(left_literal, D)
 
-            if right_atom.predicate == "Top":
+            if right_literal.get_predicate() == "Top":
                 T2 = [Interval(float('-inf'), float('inf'), True, True)]
             else:
-                T2 = apply(right_atom, D)
+                T2 = apply(right_literal, D)
 
             T = []
             if op_name == "Until":
@@ -217,3 +217,39 @@ def reverse_apply(literal, D):
             raise ValueError("{} is an illegal MTL operator name!".format(op_name))
 
         return T
+
+
+if __name__ == "__main__":
+    from collections import defaultdict
+    from meteor_reasoner.classes import Term
+    from meteor_reasoner.materialization.index_build import build_index
+
+    D = defaultdict(lambda: defaultdict(list))
+    D["A"][tuple([Term("mike"), Term("nick")])] = [Interval(3, 4, False, False), Interval(6, 10, True, True)]
+    D["B"][tuple([Term("nan")])] = [Interval(2, 8, False, False)]
+    D_index = build_index(D)
+    literal_a = Literal(Atom("A", tuple([Term("mike"), Term("nick")])), [Operator("Boxminus", Interval(1, 2, False, False))])
+    literal_b = Literal(Atom("A", tuple([Term("mike"), Term("nick")])), [Operator("Diamondminus", Interval(1, 2, False, False))])
+    bi_literal_a = BinaryLiteral(Atom("A", tuple([Term("mike"), Term("nick")])),
+                               Atom("B", tuple([Term("nan")])), Operator("Since", Interval(1, 2, False, False)))
+    bi_literal_b = BinaryLiteral(literal_a, literal_b, Operator("Since", Interval(1, 2, False, False)))
+
+    t1 = apply(literal_a, D)
+    for t in t1:
+        print(t)
+    print("end")
+    t2 = reverse_apply(literal_a, D)
+    for t in t2:
+        print(t)
+    print("end")
+    t3 = apply(bi_literal_a, D)
+    for t in t3:
+        print(t)
+    print("end")
+    t4 = apply(bi_literal_b, D)
+    for t in t4:
+        print(t)
+    print("end")
+
+
+

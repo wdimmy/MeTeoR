@@ -1,0 +1,3 @@
+a1:AssistantProfessorCandidate(X):-Diamondminus[1,3]a1:Lecturer(X)
+a1:AssociateProfessorCandidate(X):-a1:doctoralDegreeFrom(X,Y),Boxminus[1,2]a1:AssistantProfessorCandidate(X)
+a1:AssociateProfessorCandidate(X):-Boxminus[1,5]a1:AssistantProfessorCandidate(X)

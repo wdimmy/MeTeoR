@@ -1,6 +1,24 @@
 from meteor_reasoner.graphutil.graph import *
 
 
+def no_new_facts(delta_new, D, limit):
+    for predicate in delta_new:
+        for entity in delta_new[predicate]:
+            if predicate in D and entity in D[predicate]:
+                diff_interval_list = Interval.diff_list(delta_new[predicate][entity], D[predicate][entity])
+                if len(diff_interval_list) > 0:
+                    for interval in diff_interval_list:
+                        new_interval = Interval.intersection(limit, interval)
+                        if new_interval is not None:
+                            return False
+            else:
+                for interval in delta_new[predicate][entity]:
+                    new_interval = Interval.intersection(limit, interval)
+                    if new_interval is not None:
+                       return False
+    return True
+
+
 def literal_contain_no_variable(literal):
     if isinstance(literal, Atom):
         if literal.get_predicate() not in ["Bottom", "Top"] and len(literal.entity) == 1 and literal.entity[0].name == "nan":

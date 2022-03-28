@@ -49,7 +49,7 @@ def parse_rule(line):
             raise Exception("{} has an incorrect syntax!".format(literal_str))
         literals.append(literal)
 
-    negative_body_atoms = []
+    negative_body = []
     if len(negative_body) != 0:
         for literal_str in parse_body(negative_body):
             try:
@@ -57,9 +57,9 @@ def parse_rule(line):
 
             except:
                 raise Exception("{} has an incorrect syntax!".format(literal_str))
-            negative_body_atoms.append(literal)
+            negative_body.append(literal)
 
-    rule = Rule(head_atom, literals, negative_body_atoms=negative_body_atoms)
+    rule = Rule(head_atom, literals, negative_body=negative_body)
     return rule
 
 
@@ -388,6 +388,7 @@ def parse_literal(literal):
             # literal without any temporal operators
             atom = parse_atom(literal)
             return atom
+
 
 if __name__ == "__main__":
     operator_str = "ALWAYS[-1,-3]A"

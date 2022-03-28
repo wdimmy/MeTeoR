@@ -5,7 +5,6 @@ from meteor_reasoner.classes.interval import Interval
 class CommonFragment:
     def __init__(self, base_interval, cr_flag=True):
         """
-
         Args:
             base_interval: [t_D^-, t_D^+]
             common:

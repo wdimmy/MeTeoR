@@ -1,6 +1,6 @@
 from meteor_reasoner.materialization.index_build import *
 from meteor_reasoner.materialization.coalesce import *
-from meteor_reasoner.materialization.materialize import materialize
+from meteor_reasoner.materialization.t_operator import naive_immediate_consequence_operator
 from meteor_reasoner.utils.ruler_interval import *
 from meteor_reasoner.canonical.class_common_fragment import CommonFragment
 
@@ -16,7 +16,7 @@ class CanonicalRepresentation:
 
     def initilization(self):
         coalescing_d(self.D)
-        build_index(self.D,  self.D_index )
+        build_index(self.D,  self.D_index)
         self.points, self.min_x, self.max_x = get_dataset_points_x(self.D, min_x_flag=True)
         self.base_interval = Interval(self.min_x, self.max_x, False, False)
         self.z, self.gcd = get_gcd(self.Program)
@@ -344,28 +344,73 @@ def find_left_right_periods(CR, w, fact=None):
     while True:
         common_fragment = CommonFragment(CR.base_interval)
         common_fragment.common = Interval(Decimal("-inf"), Decimal("+inf"), True, True)
-        fixpoint, delta_new = materialize(CR.D, rules=CR.Program, common_fragment=common_fragment, K=1)
-        cnt += 1
-        if fact is not None:
-            if entail(fact, CR.D):
-                print("The fact: {} is entailed".format(str(fact)))
-                exit()
-        if fixpoint:
+        delta_new = naive_immediate_consequence_operator(D=CR.D, rules=CR.Program, D_index=CR.D_index)
+
+        diff_delta = []
+        terminate_flag = False
+        for head_predicate in delta_new:
+            for head_entity, T in delta_new[head_predicate].items():
+                if head_predicate not in CR.D or head_entity not in CR.D[head_predicate]:
+                    diff_delta = T
+                else:
+                    for interval1 in T:
+                        diff_delta += Interval.diff(interval1, CR.D[head_predicate][head_entity])
+
+                for cr_interval in diff_delta:
+                    if Interval.intersection(cr_interval, common_fragment.base_interval):
+                        common_fragment.cr_flag = False
+                        common_fragment.common = None
+                        terminate_flag = True
+                        break
+                    else:
+                        if cr_interval.right_value <= common_fragment.base_interval.left_value:
+                            if cr_interval.right_value >= common_fragment.common.left_value:
+                                common_fragment.common.left_value = cr_interval.right_value
+                                common_fragment.common.left_open = not cr_interval.right_open
+                        elif cr_interval.left_value >= common_fragment.base_interval.right_value:
+                            if cr_interval.left_value <= common_fragment.common.right_value:
+                                common_fragment.common.right_value = cr_interval.left_value
+                                common_fragment.common.right_open = not cr_interval.left_open
+                        else:
+                            print(str(cr_interval))
+                            print(str(common_fragment.common))
+                            raise ValueError("Error Happen")
+                if terminate_flag:
+                    break
+
+            if terminate_flag:
+                break
+
+        if len(diff_delta) == 0:
             # fixpoint
             common_fragment.common.left_value = decimal.Decimal("-inf")
             common_fragment.common.left_open = True
             common_fragment.common.right_value = decimal.Decimal("+inf")
             common_fragment.common.right_open = True
-            return CR.D, common_fragment.common, left_period, left_len, right_period,right_len
+            return CR.D, common_fragment.common, left_period, left_len, right_period, right_len
+
+        cnt += 1
+        if fact is not None:
+            if entail(fact, CR.D):
+                print("The fact: {} is entailed".format(str(fact)))
+                exit()
 
         if common_fragment.common is None:
             # add the new facts to the dataset
             for tmp_predicate in delta_new:
                 for tmp_entity in delta_new[tmp_predicate]:
-                    if tmp_predicate not in CR.D:
-                        CR.D[tmp_predicate][tmp_entity] = delta_new[tmp_predicate][tmp_entity]
-                    elif tmp_predicate in CR.D and tmp_entity not in CR.D[tmp_predicate]:
-                        CR.D[tmp_predicate][tmp_entity] = delta_new[tmp_predicate][tmp_entity]
+                    if tmp_predicate not in CR.D or tmp_entity not in CR.D[tmp_predicate]:
+                        CR.D[tmp_predicate][tmp_entity] = CR.D[tmp_predicate][tmp_entity] + delta_new[tmp_predicate][tmp_entity]
+                        # update index
+                        for i, item in enumerate(tmp_entity):
+                            CR.D_index[tmp_predicate][str(i) + "@" + item.name].append(tmp_entity)
+                        if len(tmp_entity) > 2:
+                            for i, item1 in enumerate(tmp_entity):
+                                for j, item2 in enumerate(tmp_entity):
+                                    if j <= i:
+                                        continue
+                                    CR.D_index[tmp_predicate][
+                                        str(i) + "@" + item1.name + "||" + str(j) + "@" + item2.name].append(tmp_entity)
                     elif tmp_predicate in CR.D and tmp_entity in CR.D[tmp_predicate]:
                         CR.D[tmp_predicate][tmp_entity] += delta_new[tmp_predicate][tmp_entity]
             coalescing_d(CR.D)
@@ -419,14 +464,22 @@ def find_left_right_periods(CR, w, fact=None):
 
         for tmp_predicate in delta_new:
             for tmp_entity in delta_new[tmp_predicate]:
-                if tmp_predicate not in CR.D:
+                if tmp_predicate not in CR.D or tmp_entity not in CR.D[tmp_predicate]:
                     CR.D[tmp_predicate][tmp_entity] = delta_new[tmp_predicate][tmp_entity]
-                elif tmp_predicate in CR.D and tmp_entity not in CR.D[tmp_predicate]:
-                    CR.D[tmp_predicate][tmp_entity] = delta_new[tmp_predicate][tmp_entity]
+                    # update index
+                    for i, item in enumerate(tmp_entity):
+                        CR.D_index[tmp_predicate][str(i) + "@" + item.name].append(tmp_entity)
+                    if len(tmp_entity) > 2:
+                        for i, item1 in enumerate(tmp_entity):
+                            for j, item2 in enumerate(tmp_entity):
+                                if j <= i:
+                                    continue
+                                CR.D_index[tmp_predicate][
+                                    str(i) + "@" + item1.name + "||" + str(j) + "@" + item2.name].append(tmp_entity)
                 elif tmp_predicate in CR.D and tmp_entity in CR.D[tmp_predicate]:
                     CR.D[tmp_predicate][tmp_entity] += delta_new[tmp_predicate][tmp_entity]
-        coalescing_d(CR.D)
 
+        coalescing_d(CR.D)
 
 
 def fact_entailment(D, fact, base_interval, left_period, left_len, right_period, right_len):

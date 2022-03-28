@@ -20,12 +20,14 @@ MeTeoR mainly consists of the following six modules:
 
 Besides, MeTeoR provides the implementation for the following papers:
 
+**Streaming Reasoning with DatalogMTL** Under review for Journal of Web Semantics.
+
+**Materialisation-based Reasoning in DatalogMTL with Bounded Intervals** Under review for KR 2022.
 
 **[MeTeoR: Practical Reasoning in Datalog with Metric Temporal Operators](https://arxiv.org/abs/2201.04596)** Published in AAAI 2022.
 
 **[Finitely Materialisable Datalog Programs with Metric Temporal Operators](https://proceedings.kr.org/2021/59/)** Published in KR 2021.
 
-**Materialisation-based Reasoning in DatalogMTL with Bounded Intervals** Under review for KR 2022.
 
 MeTeoR is an on-going effort, and we are planning to increase our coverage in the future.
 

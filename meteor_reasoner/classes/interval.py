@@ -18,6 +18,51 @@ class Interval:
         self.right_open = right_open
 
     @staticmethod
+    def list_union(intervals1, intervals2):
+        intervals1.sort(key=lambda k: k.left_value)
+        intervals2.sort(key=lambda k: k.left_value)
+        new_interval_list = []
+        if intervals1[0].left_value < intervals2[0].left_value:
+            for interval1 in intervals1:
+                for interval2 in intervals2:
+                    if interval2.left_value > interval1.right_value:
+                        break
+                    tmp_interval = Interval.intersection(interval1, interval2)
+                    if tmp_interval is not None:
+                        new_interval_list.append(tmp_interval)
+        else:
+            for interval1 in intervals2:
+                for interval2 in intervals1:
+                    if interval2.left_value > interval1.right_value:
+                        break
+                    tmp_interval = Interval.intersection(interval1, interval2)
+                    if tmp_interval is not None:
+                        new_interval_list.append(tmp_interval)
+        return new_interval_list
+
+    @staticmethod
+    def list_inclusion(intervals1, intervals2):
+        """
+        Judege whether the list of intervals(intervals1) is included by the list of intervals (intervals2)
+        Args:
+            intervals1: the list of intervals
+            intervals2: the list of intervals
+
+        Returns: boolean
+
+        """
+        for interval1 in intervals1:
+            for interval2 in intervals2:
+               if not Interval.inclusion(interval1, interval2):
+                    continue
+               else:
+                   break
+            else:
+                return False
+
+        return True
+
+    @staticmethod
     def compare(intervals1, intervals2):
         """
         Compare two interval lists to see whether they are equal
@@ -104,6 +149,9 @@ class Interval:
         Returns: a list of Intervals
 
         """
+        if len(t2_list) == 0:
+            return t1_list
+
         res = []
         for interval1 in t1_list:
             for interval2 in t2_list:
@@ -116,7 +164,7 @@ class Interval:
                 else:
                     intersect = Interval.intersection(interval1, interval2)
                     if interval1.left_value >= intersect.left_value:
-                        mover = Interval(intersect.right_value, interval1.right_value, not intersect.left_open, interval1.right_open)
+                        mover = Interval(intersect.right_value, interval1.right_value, not intersect.right_open, interval1.right_open)
                     else:
                         left = Interval(interval1.left_value, intersect.left_value, interval1.left_value, not intersect.left_open)
                         res.append(left)
@@ -421,7 +469,22 @@ class Interval:
 
 
 if __name__ == "__main__":
-    a = [Interval(2, 10, True, True), Interval(30, 60, False, False)]
-    b = Interval(0, 200,   False, False)
+
+    # a1 = Interval(1.5, 2.5, True, False)
+    # a2 = Interval(2.5, 4, True, False)
+    # print(Interval.intersection(a1, a2))
+    # exit()
+
+    a = [Interval(0, 0, False, False), Interval(2.0, 5, False, False)]
+    b = [Interval(0.0, 0.0, False, False)]
+
+    print(Interval.list_inclusion(b, a))
+    exit()
+
+    c = Interval.diff_list(b, a)
+    # ['[2.5,4.0]']
+    c = [Interval(0, 12,   False, False), Interval(21, 64, False, False)]
 
     print([str(item) for item in Interval.diff(b, a)])
+    print([str(item) for item in Interval.list_union(c, a)])
+    print(Interval.list_inclusion(a, c))

@@ -1,0 +1,8 @@
+a1:University(X) :- Diamondminus[0,1]a1:University(X)
+a1:GoodUniversity(Y):- a1:doctoralDegreeFrom(X,Y),a1:undergraduateDegreeFrom(Z,Y),a1:mastersDegreeFrom(K,Y),a1:University(Y)
+a1:GoodUniversity(Y):- a1:doctoralDegreeFrom(X,Y),a1:University(Y)
+a1:GoodUniversity(Y):- a1:undergraduateDegreeFrom(X,Y),a1:University(Y)
+a1:GoodUniversity(Y):- a1:mastersDegreeFrom(X,Y),a1:University(Y)
+a1:SuperGoodUniversity(Y):- a1:doctoralDegreeFrom(X,Y),a1:undergraduateDegreeFrom(Z,Y),a1:mastersDegreeFrom(K,Y)
+a1:SuperGoodUniversity(Y):- a1:doctoralDegreeFrom(X,Y)
+a1:SuperGoodUniversity(Y):- a1:undergraduateDegreeFrom(Z,Y),a1:mastersDegreeFrom(K,Y)

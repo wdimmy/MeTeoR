@@ -75,7 +75,7 @@ class BinaryLiteral:
     The BinaryLiteral class is used to store binary literal, in which there are two literal separated by
     Until or Since Operator, e.g. A(X)Since[1,2]B(X,Y)
     """
-    def __init__(self, left_atom, right_atom, operator):
+    def __init__(self, left_literal, right_literal, operator):
         """
 
         Args:
@@ -83,12 +83,21 @@ class BinaryLiteral:
             right_atom (Atom class):
             operator (Operator class):
         """
-        self.left_atom = left_atom
-        self.right_atom = right_atom
+        self.left_literal = left_literal
+        self.right_literal = right_literal
         self.operator = operator
 
     def get_op_name(self):
         return self.operator.name
+
+    def set_entity(self, entities):
+        if self.left_literal.get_predicate() == "Top":
+            self.left_literal.set_entity(entities[0])
+        elif self.right_literal.get_predicate() == "Top":
+            self.right_literal.set_entity(entities[0])
+        else:
+            self.left_literal.set_entity(entities[0])
+            self.right_literal.set_entity(entities[1])
 
     def __eq__(self, other):
         if isinstance(other, BinaryLiteral):

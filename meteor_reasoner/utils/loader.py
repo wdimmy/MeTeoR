@@ -1,6 +1,7 @@
 from meteor_reasoner.utils.parser import *
 from collections import defaultdict
 
+
 def load_dataset(lines):
     """
     Read string-like facts into a dictionary object.
@@ -14,7 +15,7 @@ def load_dataset(lines):
         there is no entity.
 
     """
-    D = defaultdict(lambda: defaultdict(dict))
+    D = defaultdict(lambda: defaultdict(list))
     for line in lines:
         line = line.strip().replace(" ","")
         if line == "":
@@ -25,7 +26,7 @@ def load_dataset(lines):
             continue
         if predicate not in D:
             if entity:
-               D[predicate] = {entity: [interval]}
+               D[predicate][entity] = [interval]
             else:
                D[predicate] = [interval]
         else:

@@ -18,11 +18,13 @@ def build_index(D, D_index=None):
                 else:
                     for i, item in enumerate(entity):
                         D_index[predicate][str(i) + "@" + item.name].append(entity)
-                    for i, item1 in enumerate(entity):
-                        for j, item2 in enumerate(entity):
-                            if j <= i:
-                                continue
-                            D_index[predicate][str(i) + "@" + item1.name+"||"+str(j) + "@" + item2.name].append(entity)
+
+                    if len(entity) > 2:
+                        for i, item1 in enumerate(entity):
+                            for j, item2 in enumerate(entity):
+                                if j <= i:
+                                    continue
+                                D_index[predicate][str(i) + "@" + item1.name+"||"+str(j) + "@" + item2.name].append(entity)
         return D_index
     else:
         for predicate in D.keys():
@@ -32,11 +34,12 @@ def build_index(D, D_index=None):
                 else:
                     for i, item in enumerate(entity):
                         D_index[predicate][str(i) + "@" + item.name].append(entity)
-                    for i, item1 in enumerate(entity):
-                        for j, item2 in enumerate(entity):
-                            if j <= i:
-                                continue
-                            D_index[predicate][str(i) + "@" + item1.name+"||"+str(j) + "@" + item2.name].append(entity)
+                    if len(entity) > 2:
+                        for i, item1 in enumerate(entity):
+                            for j, item2 in enumerate(entity):
+                                if j <= i:
+                                    continue
+                                D_index[predicate][str(i) + "@" + item1.name+"||"+str(j) + "@" + item2.name].append(entity)
 
 
 

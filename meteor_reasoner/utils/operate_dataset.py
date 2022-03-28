@@ -1,6 +1,17 @@
 import logging
 
 
+def get_min_max_rational(D):
+    min_val = float("inf")
+    max_val = float("-inf")
+    for predicate in D:
+        for entity in D[predicate]:
+            for intv in D[predicate][entity]:
+                min_val = min(min_val, intv.left_value)
+                max_val = max(max_val, intv.right_value)
+    return min_val, max_val
+
+
 def print_dataset(D):
     """
     Print all facts in D, the outputing form
@@ -40,11 +51,40 @@ def return_dataset(D):
                 entity_name = ",".join([item.name for item in entity if item.name != "nan"])
                 for interval in intervals:
                     if entity_name != "":
-                       res += predicate+"("+ entity_name + ")@"+str(interval) +"<br/>"
+                       res += predicate+"("+ entity_name + ")@"+str(interval) + "<br/>"
                     else:
                         res += predicate + "@" + str(interval) + "<br/>"
 
     return res
+
+
+def yield_dataset(D):
+    """
+    Print all facts in D, the outputing form
+    Args:
+        D (a dictionary object):
+
+    Returns:
+
+    """
+    res = ""
+    for predicate in D:
+        if "TMP" in predicate:
+            continue
+        if type(D[predicate]) == list:
+            for interval in D[predicate]:
+                res += predicate+"@"+str(interval) +"<br/>"
+        else:
+            for entity, intervals in D[predicate].items():
+                entity_name = ",".join([item.name for item in entity if item.name != "nan"])
+                for interval in intervals:
+                    if entity_name != "":
+                       yield predicate+"("+ entity_name + ")@"+str(interval)
+                    else:
+                        yield predicate + "@" + str(interval)
+
+    return res
+
 
 
 def print_predicate(predicate, D, num=100000):
