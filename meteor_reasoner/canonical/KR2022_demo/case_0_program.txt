@@ -1,0 +1,2 @@
+Boxplus[0,1]P:-P
+Boxminus[1,1]Q:-Q
