@@ -494,8 +494,10 @@ def fact_entailment(D, fact, base_interval, left_period, left_len, right_period,
                 if Interval.inclusion(fact.interval, interval):
                     return True
             else:
+                if Interval.inclusion(fact.interval, base_interval):
+                    return False
                 # using the canonical representation to do the checking
-                if fact.interval.left_value < base_interval.left_value and not left_period:
+                elif fact.interval.left_value < base_interval.left_value and not left_period:
                     # less than the base interval and the left_period is empty
                     return False
                 elif fact.interval.right_value > base_interval.right_value and not right_period:
