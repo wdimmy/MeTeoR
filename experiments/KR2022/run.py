@@ -5,9 +5,9 @@ from meteor_reasoner.canonical.calculate_w import get_w
 import argparse
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--datapath", default="./programs/case_0_dataset.txt", type=str)
-parser.add_argument("--rulepath", default="./programs/case_0_program.txt", type=str)
-parser.add_argument("--fact", default="", type=str)
+parser.add_argument("--datapath", default="../datasets/demo/dataset_4.txt", type=str)
+parser.add_argument("--rulepath", default="../datasets/demo/program_4.txt", type=str)
+parser.add_argument("--fact", default="a1:FullProfessor(http://www.department10.university1.edu/lecturer4)@(2,3]", type=str)
 args = parser.parse_args()
 
 
@@ -27,7 +27,12 @@ if __name__ == "__main__":
         fact = None
 
     # calculate w
-    w = 2 * get_w(program)
+    # will change the program, so we need to make a copy
+    t_program = copy.deepcopy(program)
+    w = 2 * get_w(t_program)
+    #w = 2 * get_w(program)
+
+
     print("The w is:", w)
     # calculate the minimum value and maximum value in the dataset
     maximum_number = -10

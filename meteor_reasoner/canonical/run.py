@@ -26,7 +26,9 @@ if __name__ == "__main__":
         fact = None
 
     # calculate w
-    w = 2 * get_w(program)
+    # will change the program, so we need to make a copy
+    t_program = copy.deepcopy(program)
+    w = 2 * get_w(t_program)
     print("The w is:", w)
     # calculate the minimum value and maximum value in the dataset
     maximum_number = -10
