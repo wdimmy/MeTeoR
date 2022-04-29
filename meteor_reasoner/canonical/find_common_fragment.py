@@ -387,7 +387,7 @@ def find_left_right_periods(CR, w, fact=None):
             common_fragment.common.left_open = True
             common_fragment.common.right_value = decimal.Decimal("+inf")
             common_fragment.common.right_open = True
-            return CR.D, common_fragment.common, left_period, left_len, right_period, right_len
+            return CR.D, common_fragment.common, None, None, None, None, None, None
 
         cnt += 1
         if fact is not None:
