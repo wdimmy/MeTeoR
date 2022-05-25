@@ -359,8 +359,8 @@ def parse_literal(literal):
         begin_index = literal.index(result[0])
         left_literal = literal[:begin_index]
         right_literal = literal[begin_index + len(result[0]):]
-        left_literal = parse_atom(left_literal)
-        right_literal = parse_atom(right_literal)
+        left_literal = parse_literal(left_literal)
+        right_literal = parse_literal(right_literal)
 
         op = parse_operator(result[0])
         b_literal = BinaryLiteral(left_literal, right_literal, op)
@@ -387,7 +387,8 @@ def parse_literal(literal):
         else:
             # literal without any temporal operators
             atom = parse_atom(literal)
-            return atom
+            t_literal = Literal(atom, [])
+            return t_literal
 
 
 if __name__ == "__main__":

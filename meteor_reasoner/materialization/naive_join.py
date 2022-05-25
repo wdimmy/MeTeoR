@@ -19,12 +19,16 @@ def naive_join(rule, D, delta_new, D_index=None, recorder=None ):
     Returns:
         None
     """
+    success_ground = [0] # used for recording the number of relational instances
     head_entity = rule.head.get_entity()
     head_predicate = rule.head.get_predicate()
     literals = rule.body + rule.negative_body
 
     def ground_body(global_literal_index, delta, context):
         if global_literal_index == len(literals):
+            success_ground[0] = success_ground[0] + 1
+            # print("Number of relational instance:", success_ground[0])
+            # print(context)
             if recorder is not None:
                 recorder.total += 1
             T = []

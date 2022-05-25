@@ -101,15 +101,15 @@ class BinaryLiteral:
 
     def __eq__(self, other):
         if isinstance(other, BinaryLiteral):
-            return self.left_atom == other.left_atom and self.right_atom == other.right_atom and \
+            return self.left_literal == other.left_literal and self.right_literal == other.right_literal and \
                    self.operator == other.operator
         return False
 
     def __str__(self):
-        return str(self.left_atom) + str(self.operator) + str(self.right_atom)
+        return str(self.left_literal) + str(self.operator) + str(self.right_literal)
 
     def __hash__(self):
-        return hash("BiLiteral:" + str(self.left_atom) + str(self.operator) + str(self.right_atom))
+        return hash("BiLiteral:" + str(self.left_literal) + str(self.operator) + str(self.right_literal))
 
 
 

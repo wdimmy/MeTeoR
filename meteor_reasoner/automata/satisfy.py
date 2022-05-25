@@ -1,4 +1,5 @@
 from meteor_reasoner.automata.utils import *
+from meteor_reasoner.classes.atom import Atom
 import copy
 
 
@@ -64,7 +65,7 @@ def get_matched_literals(literal, installed_literals):
     predicate_matched_literals = []
     for item in installed_literals:
         if isinstance(item, BinaryLiteral) and isinstance(literal, BinaryLiteral):
-            if literal.left_atom.get_predicate() == item.left_atom.get_predicate() and literal.right_atom.get_predicate() == item.right_atom.get_predicate():
+            if literal.left_literal.get_predicate() == item.left_literal.get_predicate() and literal.right_literal.get_predicate() == item.right_literal.get_predicate():
                 if literal.operator == item.operator:
                     predicate_matched_literals.append(item)
         elif isinstance(item, Literal) and isinstance(literal, Literal):
@@ -91,11 +92,11 @@ def ground_literal(literal, context, installed_literals):
     if isinstance(literal, BinaryLiteral):
         for item in get_matched_literals(literal, installed_literals):
             tmp_context = dict()
-            literal_left_entity = literal.left_atom.get_entity()
-            item_left_entity = item.left_atom.get_entity()
+            literal_left_entity = literal.left_literal.get_entity()
+            item_left_entity = item.left_literal.get_entity()
             left_valid_flag = True
 
-            if literal.left_atom.get_predicate() not in ["Top"]:
+            if literal.left_literal.get_predicate() not in ["Top"]:
                 if literal_left_entity is not None:
                     for i in range(len(literal_left_entity)):
                         if literal_left_entity[i].type == "constant":
@@ -111,11 +112,11 @@ def ground_literal(literal, context, installed_literals):
                                     break
 
             if left_valid_flag:
-                literal_right_entity = literal.right_atom.get_entity()
-                item_right_entity = item.right_atom.get_entity()
+                literal_right_entity = literal.right_literal.get_entity()
+                item_right_entity = item.right_literal.get_entity()
                 right_valid_flag = True
 
-                if literal.right_atom.get_predicate() not in ["Top"]:
+                if literal.right_literal.get_predicate() not in ["Top"]:
                     if literal_right_entity is not None:
                         for i in range(len(literal_right_entity)):
                             if literal_right_entity[i].type == "constant":

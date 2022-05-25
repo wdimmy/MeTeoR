@@ -68,7 +68,7 @@ class BuchiAutomata:
                 if interval_intesection_intervallist(ruler_interval, must_literals[literal]):
                     self.window_must_include_static[ruler_interval].append(literal)
                 if isinstance(literal, BinaryLiteral):
-                    if literal.left_atom.get_predicate() in self.automata_predicates or literal.right_atom.get_predicate() in self.automata_predicates:
+                    if literal.left_literal.get_predicate() in self.automata_predicates or literal.right_literal.get_predicate() in self.automata_predicates:
                         self.variable_literals.add(literal)
                 else:
                     if literal.get_predicate() in self.automata_predicates:

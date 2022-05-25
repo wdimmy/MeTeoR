@@ -3,6 +3,7 @@ from functools import reduce
 from collections import defaultdict
 from meteor_reasoner.classes.term import *
 import math
+from meteor_reasoner.classes.interval import Interval
 
 
 def construct_left_right_pattern(points, gcd):
@@ -351,7 +352,7 @@ def extract_program(program, involved_predicates):
             continue
         for literal in rule.body():
             if isinstance(literal, BinaryLiteral):
-                if literal.left_atom.get_predicate() in involved_predicates or literal.right_atom.get_predicate() in involved_predicates:
+                if literal.left_literal.get_predicate() in involved_predicates or literal.right_literal.get_predicate() in involved_predicates:
                     literals.add(literal)
             elif isinstance(literal, Literal):
                 if literal.get_predicate() in involved_predicates:

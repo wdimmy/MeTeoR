@@ -7,7 +7,7 @@ from meteor_reasoner.utils.operate_dataset import print_dataset
 from meteor_reasoner.materialization.coalesce import coalescing_d
 
 
-def seminaive_join(rule, D,  delta_old, delta_new,  D_index=None):
+def seminaive_join(rule, D,  delta_old, delta_new,  k=1, D_index=None):
     """
     This function implement the join operator when variables exist in the body of the rule.
     Args:
@@ -21,9 +21,16 @@ def seminaive_join(rule, D,  delta_old, delta_new,  D_index=None):
     head_entity = rule.head.get_entity()
     head_predicate = rule.head.get_predicate()
     literals = rule.body + rule.negative_body
+    history_visited = defaultdict(int)
 
     def ground_body(global_literal_index, visited, delta, context):
         if global_literal_index == len(literals):
+            for t_key, t_value in delta.items():
+                t_item = str(t_key) + ":"
+                for t_entity in t_value:
+                    t_item += "-".join([str(item) for item in t_entity])
+                history_visited[t_item] += 1
+
             T = []
             for i in range(len(rule.body)):
                 grounded_literal = copy.deepcopy(literals[i])
@@ -33,7 +40,7 @@ def seminaive_join(rule, D,  delta_old, delta_new,  D_index=None):
                     if grounded_literal.get_predicate() not in ["Bottom", "Top"]:
                         grounded_literal.set_entity(delta[i][0])
                 if i == visited:
-                   t = apply(grounded_literal, delta_old)
+                   t = apply(grounded_literal, D)
                 else:
                    t = apply(grounded_literal, D)
                 if len(t) == 0:
@@ -116,85 +123,129 @@ def seminaive_join(rule, D,  delta_old, delta_new,  D_index=None):
                         ground_body(global_literal_index + 1, visited, {**delta, **tmp_delta}, {**context, **tmp_context})
 
                 elif right_predicate in ["Bottom", "Top"]:
-                    for tmp_entity, tmp_interval, tmp_context in ground_generator(current_literal.left_literal, context, D, D_index):
+                    for tmp_entity, tmp_context in ground_generator(current_literal.left_literal, context, D, D_index):
                         tmp_delta = {global_literal_index: [tmp_entity]}
                         ground_body(global_literal_index + 1,visited, {**delta, **tmp_delta}, {**context, **tmp_context})
 
                 else:
-                    for left_entity, left_interval, tmp_context1 in ground_generator(current_literal.left_literal, context, D):
-                        for right_entity, right_interval, tmp_context2 in ground_generator(current_literal.right_literal,{**context, **tmp_context1}, D):
+                    for left_entity, tmp_context1 in ground_generator(current_literal.left_literal, context, D):
+                        for right_entity, tmp_context2 in ground_generator(current_literal.right_literal,{**context, **tmp_context1}, D):
                             tmp_delta = {global_literal_index: [left_entity, right_entity]}
                             ground_body(global_literal_index + 1, visited, {**delta, **tmp_delta}, {**context, **tmp_context1, **tmp_context2})
 
-    for predicate in delta_old:
-        for i in range(len(rule.body)):
-            if not isinstance(literals[i], BinaryLiteral):
-                if literals[i].get_predicate() == predicate:
-                    break
-            else:
-                left_predicate = literals[i].left_atom.get_predicate()
-                right_predicate = literals[i].right_atom.get_predicate()
-                if left_predicate == predicate:
-                    break
-                elif right_predicate == predicate:
-                    break
-        else:
-            continue
-        for entity in delta_old[predicate]:
+    if delta_old is None:
+        return
+
+    if k == 1:
+        ground_body(0, -1,  {}, dict())
+
+    else:
+        for predicate in delta_old:
             for i in range(len(rule.body)):
-                if isinstance(literals[i], BinaryLiteral):
-                    left_predicate = literals[i].left_atom.get_predicate()
-                    right_predicate = literals[i].right_atom.get_predicate()
-
-                    if left_predicate == predicate:
-                        context = dict()
-                        for term1, term2 in zip(literals[i].left_atom.get_entity(), entity):
-                            if term1.type == "constant" and term1.name != term2.name:
-                                break
-                            elif term1.type == "variable" and term1.name in context and context[
-                                term1.name] != term2.name:
-                                break
-                            else:
-                                if term1.type == "variable":
-                                    context[term1.name] = term2.name
-
-                        if right_predicate in ["Bottom", "Top"]:
-                            ground_body(0, i, {i: [entity]}, context)
-
-                        else:
-                            for tmp_entity, tmp_interval, tmp_context in ground_generator(literals[i].right_atom,
-                                    context, D, D_index):
-                                ground_body(0, i, {i: [entity, tmp_entity]}, {**context, **tmp_context})
-
-                    elif right_predicate == predicate:
-                        context = dict()
-                        for term1, term2 in zip(literals[i].right_atom.get_entity(), entity):
-                            if term1.type == "constant" and term1.name != term2.name:
-                                break
-                            elif term1.type == "variable" and term1.name in context and context[
-                                term1.name] != term2.name:
-                                break
-                            else:
-                                if term1.type == "variable":
-                                    context[term1.name] = term2.name
-                        if left_predicate in ["Bottom", "Top"]:
-                            ground_body(0, i, {i: [entity]}, context)
-                        else:
-                            for tmp_entity, tmp_interval, tmp_context in ground_generator(literals[i].left_atom, context, D, D_index):
-                                ground_body(0, i, {i: [tmp_entity, entity]}, {**context, **tmp_context})
-
-                else:
+                if not isinstance(literals[i], BinaryLiteral):
                     if literals[i].get_predicate() == predicate:
-                        context = dict()
-                        for term1, term2 in zip(literals[i].get_entity(), entity):
-                            if term1.type == "constant" and term1.name != term2.name:
-                                break
-                            elif term1.type == "variable" and term1.name in context and context[term1.name] != term2.name:
-                                break
+                        break
+                else:
+                    left_predicate = literals[i].left_literal.get_predicate()
+                    right_predicate = literals[i].right_literal.get_predicate()
+                    if left_predicate == predicate:
+                        break
+                    elif right_predicate == predicate:
+                        break
+            else:
+                continue
+
+            for entity in delta_old[predicate]:
+                for i in range(len(rule.body)):
+                    if isinstance(literals[i], BinaryLiteral):
+                        left_predicate = literals[i].left_literal.get_predicate()
+                        right_predicate = literals[i].right_literal.get_predicate()
+
+                        if left_predicate == predicate:
+                            context = dict()
+                            for term1, term2 in zip(literals[i].left_literal.get_entity(), entity):
+                                if term1.type == "constant" and term1.name != term2.name:
+                                    break
+                                elif term1.type == "variable" and term1.name in context and context[
+                                    term1.name] != term2.name:
+                                    break
+                                else:
+                                    if term1.type == "variable":
+                                        context[term1.name] = term2.name
+
+                            if right_predicate in ["Bottom", "Top"]:
+                                # judge whether it has been visited
+                                t_item = str(i) + ":"
+                                for t_entity in [entity]:
+                                    t_item += "-".join([str(item) for item in t_entity])
+                                if t_item in history_visited:
+                                    break
+
+                                ground_body(0, i, {i: [entity]}, context)
+
                             else:
-                                if term1.type == "variable":
-                                    context[term1.name] = term2.name
-                        ground_body(0, i,  {i: [entity]}, context)
+                                for tmp_entity, tmp_context in ground_generator(literals[i].right_literal,
+                                        context, D, D_index):
+                                    # judge whether it has been visited
+                                    t_item = str(i) + ":"
+                                    for t_entity in [entity, tmp_entity]:
+                                        t_item += "-".join([str(item) for item in t_entity])
+                                    if t_item in history_visited:
+                                        break
+
+                                    ground_body(0, i, {i: [entity, tmp_entity]}, {**context, **tmp_context})
+
+                        elif right_predicate == predicate:
+                            context = dict()
+                            for term1, term2 in zip(literals[i].right_literal.get_entity(), entity):
+                                if term1.type == "constant" and term1.name != term2.name:
+                                    break
+                                elif term1.type == "variable" and term1.name in context and context[
+                                    term1.name] != term2.name:
+                                    break
+                                else:
+                                    if term1.type == "variable":
+                                        context[term1.name] = term2.name
+
+                            if left_predicate in ["Bottom", "Top"]:
+                                # judge whether it has been visited
+                                t_item = str(i) + ":"
+                                for t_entity in [entity]:
+                                    t_item += "-".join([str(item) for item in t_entity])
+                                if t_item in history_visited:
+                                    break
+
+                                ground_body(0, i, {i: [entity]}, context)
+
+                            else:
+                                for tmp_entity, tmp_context in ground_generator(literals[i].left_literal, context, D, D_index):
+                                    # judge whether it has been visited
+                                    t_item = str(i) + ":"
+                                    for t_entity in [tmp_entity, entity]:
+                                        t_item += "-".join([str(item) for item in t_entity])
+                                    if t_item in history_visited:
+                                        break
+
+                                    ground_body(0, i, {i: [tmp_entity, entity]}, {**context, **tmp_context})
+
+                    else:
+                        if literals[i].get_predicate() == predicate:
+                            context = dict()
+                            for term1, term2 in zip(literals[i].get_entity(), entity):
+                                if term1.type == "constant" and term1.name != term2.name:
+                                    break
+                                elif term1.type == "variable" and term1.name in context and context[term1.name] != term2.name:
+                                    break
+                                else:
+                                    if term1.type == "variable":
+                                        context[term1.name] = term2.name
+
+                            t_item = str(i) + ":"
+                            t_item += "-".join([str(item) for item in entity])
+                            if t_item in history_visited:
+                                break
+
+                            ground_body(0, i,  {i: [entity]}, context)
 
 
 if __name__ == "__main__":

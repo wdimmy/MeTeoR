@@ -82,8 +82,8 @@ class CycleFinder:
             self.add(head_predicate)
             for literal in rule.body:
                 if isinstance(literal, BinaryLiteral):
-                    self.add(literal.left_atom.get_predicate())
-                    self.add(literal.right_atom.get_predicate())
+                    self.add(literal.left_literal.get_predicate())
+                    self.add(literal.right_literal.get_predicate())
                 else:
                    self.add(literal.get_predicate())
 
@@ -95,13 +95,13 @@ class CycleFinder:
                         self.loop.append([self.predicate2id[head_predicate]])
                     self.addedge(literal.get_predicate(), head_predicate)
                 else:
-                    if head_predicate == literal.left_atom.get_predicate():
+                    if head_predicate == literal.left_literal.get_predicate():
                         self.loop.append([self.predicate2id[head_predicate]])
-                    if head_predicate == literal.right_atom.get_predicate():
+                    if head_predicate == literal.right_literal.get_predicate():
                         self.loop.append([self.predicate2id[head_predicate]])
 
-                    self.addedge(literal.left_atom.get_predicate(), head_predicate)
-                    self.addedge(literal.right_atom.get_predicate(), head_predicate)
+                    self.addedge(literal.left_literal.get_predicate(), head_predicate)
+                    self.addedge(literal.right_literal.get_predicate(), head_predicate)
 
         self.V = len(self.predicate2id)
 
@@ -118,8 +118,8 @@ class CycleFinder:
                         if not isinstance(literal, BinaryLiteral):
                             r_prime_body_prime.append(literal.get_predicate())
                         else:
-                            r_prime_body_prime.append(literal.left_atom.get_predicate())
-                            r_prime_body_prime.append(literal.right_atom.get_predicate())
+                            r_prime_body_prime.append(literal.left_literal.get_predicate())
+                            r_prime_body_prime.append(literal.right_literal.get_predicate())
 
             for rule in self.program:
                 head_predicate = rule.head.get_predicate()

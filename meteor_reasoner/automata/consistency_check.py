@@ -1,4 +1,3 @@
-from meteor_reasoner.graphutil.temporal_dependency_graph import CycleFinder
 from meteor_reasoner.utils.conversion import *
 from meteor_reasoner.automata.buichi_automata import *
 from meteor_reasoner.automata.utils import *

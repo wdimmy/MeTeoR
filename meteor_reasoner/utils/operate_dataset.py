@@ -30,6 +30,24 @@ def print_dataset(D):
                     print(predicate + "(" + ",".join([item.name for item in entity]) + ")@" + str(interval))
 
 
+def save_dataset_to_file(filename, D):
+    """
+       Print all facts in D, the outputing form
+       Args:
+           D (a dictionary object):
+
+       Returns:
+
+       """
+    filewriter = open(filename, "w")
+    for predicate in D:
+        for entity, intervals in D[predicate].items():
+            for interval in intervals:
+                if len(entity) == 1 and entity[0].name == "nan":
+                    filewriter(predicate + "@" + str(interval)+"\n")
+                else:
+                    filewriter.write(predicate + "(" + ",".join([item.name for item in entity]) + ")@" + str(interval)+"\n")
+
 def return_dataset(D):
     """
     Print all facts in D, the outputing form

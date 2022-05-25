@@ -5,7 +5,7 @@ from meteor_reasoner.utils.propagation import check_propagation
 from meteor_reasoner.graphutil.temporal_dependency_graph import CycleFinder
 import time
 from meteor_reasoner.materialization.utils import no_new_facts
-
+from meteor_reasoner.utils.operate_dataset import save_dataset_to_file
 
 def calculate_redundancy(delta, old):
     cnt = 0
@@ -111,12 +111,17 @@ def materialize(D, rules, D_index, seminaive=False, delta_old=None, K=100, logge
     while k < K:
         k += 1
         if seminaive:
-            delta_new = seminaive_immediate_consequence_operator(rules, D, D_index, delta_old=delta_old)
+            semi_start_time = time.time()
+            delta_new = seminaive_immediate_consequence_operator(rules, D, D_index, k=k, delta_old=delta_old)
+            #print("One semi round:", time.time()-semi_start_time)
         else:
+            naive_start_time = time.time()
             delta_new = naive_immediate_consequence_operator(rules, D, D_index, recorder=recorder)
+            #print("One naive round:", time.time() - naive_start_time)
 
         if seminaive:
             delta_old = defaultdict(lambda: defaultdict(list))
+            semi_combine_start_time = time.time()
             fixpoint = seminaive_combine(D, delta_new, delta_old, D_index)
             if logger is not None:
                 tmp_start_time = time.time()
@@ -131,6 +136,7 @@ def materialize(D, rules, D_index, seminaive=False, delta_old=None, K=100, logge
         else:
             if logger is not None:
                 delta_old = defaultdict(lambda: defaultdict(list))
+                naive_combine_start_time = time.time()
                 fixpoint = seminaive_combine(D, delta_new, delta_old, D_index)
                 tmp_start_time = time.time()
                 coalescing_d(delta_new)
@@ -143,7 +149,9 @@ def materialize(D, rules, D_index, seminaive=False, delta_old=None, K=100, logge
                 logger.info("Iteration={}, t={}, D={}, n={}".format(k, time.time() - start_time - calc_time, total_number, number_of_redundant_facts))
             else:
                 fixpoint = naive_combine(D, delta_new, D_index)
+
         if fixpoint:
+            save_dataset_to_file("recursive_dataset.txt", D)
             return True
 
     return False
@@ -153,6 +161,7 @@ def opt_materialize(D, rules, D_index, min_value=decimal.Decimal(0), max_value=d
     # preprocessing
     CF = CycleFinder(program=rules)
     non_predicates = CF.get_non_recursive_predicates()
+    #print("Non-recursive predicates:", non_predicates)
     nr_program = list()
     r_program = list()
     for rule in rules:
@@ -160,6 +169,9 @@ def opt_materialize(D, rules, D_index, min_value=decimal.Decimal(0), max_value=d
             nr_program.append(rule)
         else:
             r_program.append(rule)
+    # for rule in nr_program:
+    #     print("rule:", rule)
+    # exit()
     while True:
         delta_new = seminaive_immediate_consequence_operator(nr_program, D, D_index, delta_old=delta_old)
         delta_old = defaultdict(lambda: defaultdict(list))
@@ -170,29 +182,77 @@ def opt_materialize(D, rules, D_index, min_value=decimal.Decimal(0), max_value=d
     # forward propagation
     observed_rules = defaultdict(list)
     if propagation == 1:
+        print("Is a forward-propagating program!")
         for rule in r_program:
-            max_right = float("-inf")
+            min_right = float("inf")
             for literal in rule.body:
-                predicate = literal.get_predicate()
-                if predicate in non_predicates:
-                    for entity in D[predicate]:
-                        max_right = max(max_right, max([interval.right_value for interval in D[predicate][entity]]))
+                if isinstance(literal, BinaryLiteral):
+                    predicate = literal.left_literal.get_predicate()
+                    if predicate in non_predicates:
+                        tmp_max_right = float("-inf")
+                        for entity in D[predicate]:
+                            tmp_max_right = max(tmp_max_right, max([interval.right_value for interval in D[predicate][entity]]))
 
-            if max_right != float("-inf"):
-                observed_rules[max_right].append(rule)
+                        min_right = min(min_right, tmp_max_right)
+                    predicate = literal.right_literal.get_predicate()
+                    if predicate in non_predicates:
+                        tmp_max_right = float("-inf")
+                        for entity in D[predicate]:
+                            tmp_max_right = max(tmp_max_right,
+                                                max([interval.right_value for interval in D[predicate][entity]]))
+                        min_right = min(min_right, tmp_max_right)
+                else:
+                    predicate = literal.get_predicate()
+                    if predicate in non_predicates:
+                        tmp_max_right = float("-inf")
+                        for entity in D[predicate]:
+                            tmp_max_right = max(tmp_max_right,
+                                                max([interval.right_value for interval in D[predicate][entity]]))
+                        min_right = min(min_right, tmp_max_right)
+
+            if min_right != float("inf"):
+                observed_rules[min_right].append(rule)
+
     # backward propagation
     elif propagation == 2:
+        print("Is a backward-propagating program!")
         for rule in r_program:
-            max_left = float("inf")
+            max_left = float("-inf")
             for literal in rule.body:
-                if literal.get_predicate() in non_predicates:
+                if isinstance(literal, BinaryLiteral):
+                    predicate = literal.left_literal.get_predicate()
+                    if predicate in non_predicates:
+                        tmp_min_left = float("inf")
+                        for entity in D[non_predicates]:
+                           tmp_min_left = min(tmp_min_left, min([interval.left_value for interval in D[predicate][entity]]))
+
+                        max_left = max(max_left, tmp_min_left)
+                    predicate = literal.right_literal.get_predicate()
+                    if predicate in non_predicates:
+                        tmp_min_left = float("inf")
+                        for entity in D[non_predicates]:
+                            tmp_min_left = min(tmp_min_left,
+                                               min([interval.left_value for interval in D[predicate][entity]]))
+
+                        max_left = max(max_left, tmp_min_left)
+                else:
                     predicate = literal.get_predicate()
-                    for entity in D[non_predicates]:
-                        max_left = max(max_left, max([interval.left_value for interval in D[predicate][entity]]))
+                    if predicate in non_predicates:
+                        tmp_min_left = float("inf")
+                        for entity in D[non_predicates]:
+                            tmp_min_left = min(tmp_min_left,
+                                               min([interval.left_value for interval in D[predicate][entity]]))
+
+                        max_left = max(max_left, tmp_min_left)
 
             if max_left is not float("-inf"):
                 observed_rules[rule] = max_left
+
     observed_rules = sorted(observed_rules.items(), key=lambda item: item[0])
+    # for key, value in observed_rules:
+    #     print(key, [str(v) for v in value])
+    # print("=====================")
+    # exit()
     k=0
     records = {}
     if logger is not None:
@@ -202,20 +262,27 @@ def opt_materialize(D, rules, D_index, min_value=decimal.Decimal(0), max_value=d
     delta_old = D
     while k < K:
         k += 1
-        delta_new = optimize_seminaive_immediate_consequence_operator(r_program, D, D_index,
-                                                                      delta_old=delta_old, records=records, non_predicates=non_predicates)
+        if k == 9:
+            r_program = r_program[-8:]
+        delta_new = seminaive_immediate_consequence_operator(r_program, D, D_index, k=k,
+                                                                      delta_old=delta_old)
 
         if propagation == 1:
             for i, item in enumerate(observed_rules):
                 if no_new_facts(delta_new, D, Interval(min_value, item[0], False, False)):
                     for rule in item[1]:
-                         r_program.remove(rule)
+                        #print("Removed rule:", str(rule))
+                        try:
+                          r_program.remove(rule)
+                        except:
+                            continue
+                        #print("Number of remaining rules:", len(r_program))
+
                 else:
                     observed_rules = observed_rules[i:]
                     break
             else:
                 observed_rules = observed_rules[i+1:]
-
 
         elif propagation == 2:
             for i, item in enumerate(observed_rules):
