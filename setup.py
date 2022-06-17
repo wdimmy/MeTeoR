@@ -5,10 +5,10 @@ import sys
 from io import open
 here = path.abspath(path.dirname(__file__))
 sys.path.insert(0, path.join(here, 'meteor_reasoner'))
-from version import __version__
-
-print('version')
-print(__version__)
+# from version import __version__
+#
+# print('version')
+# print(__version__)
 
 # Get the long description from the README file
 with open(path.join(here, 'README.md'), encoding='utf-8') as f:
@@ -16,7 +16,7 @@ with open(path.join(here, 'README.md'), encoding='utf-8') as f:
 
 
 setup(name='meteor_reasoner',
-      version=__version__,
+      version="1.0.7",
       description='A Metric Temporal Reasoner',
       url='https://github.com/wdimmy/MeTeoR',
       author='Dingmin Wang',

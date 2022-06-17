@@ -71,7 +71,7 @@ def until_deduce(literal, left_interval, right_interval):
         return interval
 
 
-def apply(literal, D):
+def apply(literal, D, delta_old=None):
     """
     Apply MTL operator(s) to a literal.
     Args:
@@ -83,12 +83,18 @@ def apply(literal, D):
     """
     if not isinstance(literal, BinaryLiteral) and (isinstance(literal, Atom) or
                                                    len(literal.operators) == 0):
+
         predicate = literal.get_predicate()
         entity = literal.get_entity()
-
         if entity: # not None
             if predicate in D and entity in D[predicate]:
-                return D[predicate][entity]
+                if delta_old is not None and predicate in delta_old and entity in delta_old[predicate]:
+                    full_intervals = copy.deepcopy(D[predicate][entity])
+                    for remove_interval in delta_old[predicate][entity]:
+                        full_intervals.remove(remove_interval)
+                    return full_intervals
+                else:
+                    return D[predicate][entity]
             else:
                 return []
 

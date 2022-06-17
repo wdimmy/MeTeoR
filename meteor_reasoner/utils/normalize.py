@@ -1,4 +1,5 @@
 from collections import deque
+from meteor_reasoner.classes.atom import  Atom
 from meteor_reasoner.classes.rule import *
 from meteor_reasoner.classes.literal import *
 import copy

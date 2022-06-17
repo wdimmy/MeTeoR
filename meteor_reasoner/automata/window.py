@@ -1,6 +1,5 @@
 from meteor_reasoner.classes.interval import *
 
-
 class AutomataWindow:
     def __init__(self, ruler_intervals, ruler_intervals_literals, left_pattern, right_pattern):
         """
@@ -115,7 +114,7 @@ class AutomataWindow:
                break
             del ruler_interval_len[-1]
 
-    def move_right(self, subset_literal=[]):
+    def move_right(self, subset_literal=set()):
       the_most_right_ruler_interval = self.ruler_intervals[-1]
       if the_most_right_ruler_interval.right_open:
          new_ruler_interval = Interval(the_most_right_ruler_interval.right_value, the_most_right_ruler_interval.right_value, False, False)

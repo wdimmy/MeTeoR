@@ -7,7 +7,7 @@ from meteor_reasoner.utils.operate_dataset import print_dataset
 from meteor_reasoner.materialization.coalesce import coalescing_d
 
 
-def naive_join(rule, D, delta_new, D_index=None, recorder=None ):
+def naive_join(rule, D, delta_new, D_index=None, must_literals=None):
     """
     This function implement the join operator when variables exist in the body of the rule.
     Args:
@@ -19,18 +19,12 @@ def naive_join(rule, D, delta_new, D_index=None, recorder=None ):
     Returns:
         None
     """
-    success_ground = [0] # used for recording the number of relational instances
     head_entity = rule.head.get_entity()
     head_predicate = rule.head.get_predicate()
     literals = rule.body + rule.negative_body
 
     def ground_body(global_literal_index, delta, context):
         if global_literal_index == len(literals):
-            success_ground[0] = success_ground[0] + 1
-            # print("Number of relational instance:", success_ground[0])
-            # print(context)
-            if recorder is not None:
-                recorder.total += 1
             T = []
             for i in range(len(rule.body)):
                 grounded_literal = copy.deepcopy(literals[i])
@@ -43,11 +37,9 @@ def naive_join(rule, D, delta_new, D_index=None, recorder=None ):
                 if len(t) == 0:
                     break
                 else:
-                    if recorder is not None:
-                        tmp_predicate = grounded_literal.get_predicate()
-                        tmp_entity = grounded_literal.get_entity()
-                        recorder.apply_num += len(D[tmp_predicate][tmp_entity])
                     T.append(t)
+                    if must_literals is not None:
+                        must_literals[grounded_literal] += t
             n_T = []
             for i in range(len(rule.body), len(literals)):
                 grounded_literal = copy.deepcopy(literals[i])
@@ -61,11 +53,9 @@ def naive_join(rule, D, delta_new, D_index=None, recorder=None ):
                 if len(t) == 0:
                     break
                 else:
-                    if recorder is not None:
-                        tmp_predicate = grounded_literal.get_predicate()
-                        tmp_entity = grounded_literal.get_entity()
-                        recorder.apply_num += len(D[tmp_predicate][tmp_entity])
                     n_T.append(t)
+                    if must_literals is not None:
+                        must_literals[grounded_literal] += t
 
             if len(n_T) > 0 and len(n_T) == len(rule.negative_body_atoms):
                 n_T = interval_merge(T)
@@ -88,9 +78,6 @@ def naive_join(rule, D, delta_new, D_index=None, recorder=None ):
             else:
                 replaced_head_entity = head_entity
 
-            if len(T) != len(literals) and recorder is not None:
-                recorder.semi += 1
-
             if len(T) == len(literals):
                 T = interval_merge(T)
                 exclude_t = []
@@ -98,59 +85,48 @@ def naive_join(rule, D, delta_new, D_index=None, recorder=None ):
                     exclude_t = interval_merge([T, n_T])
                 if len(exclude_t) != 0:
                     T = Interval.diff(T, exclude_t)
-
                 if len(T) != 0:
                     if not isinstance(rule.head, Atom):
                         tmp_D = defaultdict(lambda: defaultdict(list))
                         tmp_D[head_predicate][replaced_head_entity] = T
                         tmp_head = copy.deepcopy(rule.head)
                         tmp_head.set_entity(replaced_head_entity)
+
+                        if must_literals is not None:
+                            must_literals[tmp_head] += T
                         T = reverse_apply(tmp_head, tmp_D)
-                    delta_new[head_predicate][replaced_head_entity] = delta_new[head_predicate][replaced_head_entity] + T
+                    delta_new[head_predicate][replaced_head_entity] += T
+                    if must_literals is not None:
+                        must_literals[Atom(head_predicate, replaced_head_entity)] += T
+
         else:
             current_literal = copy.deepcopy(literals[global_literal_index])
             if not isinstance(current_literal, BinaryLiteral):
                 if current_literal.get_predicate() in ["Bottom", "Top"]:
                     ground_body(global_literal_index+1, delta, context)
                 else:
-                    valid_flag = False
                     for tmp_entity, tmp_context in ground_generator(current_literal, context, D, D_index):
-                        valid_flag = True
                         tmp_delata = {global_literal_index: [tmp_entity]}
                         ground_body(global_literal_index+1, {**delta, **tmp_delata}, {**context, **tmp_context})
-                    if not valid_flag and global_literal_index != 0 and recorder is not None :
-                        recorder.invalid += 1
             else:
                 left_predicate = current_literal.left_literal.get_predicate()
                 right_predicate = current_literal.right_literal.get_predicate()
 
                 if left_predicate in ["Bottom", "Top"]:
-                    valid_flag = False
                     for tmp_entity, tmp_context in ground_generator(current_literal.right_literal, context,  D, D_index):
-                        valid_flag = True
                         tmp_delta = {global_literal_index: [tmp_entity]}
                         ground_body(global_literal_index + 1, {**delta, **tmp_delta}, {**context, **tmp_context})
-                    if not valid_flag and global_literal_index != 0 and recorder is not None :
-                        recorder.invalid += 1
 
                 elif right_predicate in ["Bottom", "Top"]:
-                    valid_flag = False
                     for tmp_entity, tmp_context in ground_generator(current_literal.left_literal, context, D, D_index):
-                        valid_flag = True
                         tmp_delta = {global_literal_index: [tmp_entity]}
                         ground_body(global_literal_index + 1, {**delta, **tmp_delta}, {**context, **tmp_context})
-                    if not valid_flag and global_literal_index != 0 and recorder is not None :
-                        recorder.invalid += 1
 
                 else:
-                    valid_flag = False
                     for left_entity, tmp_context1 in ground_generator(current_literal.left_literal, context, D):
                         for right_entity, tmp_context2 in ground_generator(current_literal.right_literal.atom,{**context, **tmp_context1}, D):
-                            valid_flag = True
                             tmp_delta = {global_literal_index: [left_entity, right_entity]}
                             ground_body(global_literal_index + 1, {**delta, **tmp_delta}, {**context, **tmp_context1, **tmp_context2})
-                    if not valid_flag and global_literal_index != 0 and recorder is not None :
-                        recorder.invalid += 1
 
     ground_body(0, {}, dict())
 

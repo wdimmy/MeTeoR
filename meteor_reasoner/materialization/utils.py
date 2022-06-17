@@ -1,4 +1,6 @@
 from meteor_reasoner.graphutil.graph import *
+from meteor_reasoner.materialization.ground import ground_generator
+from meteor_reasoner.materialization.apply import apply
 
 
 def no_new_facts(delta_new, D, limit):
@@ -85,3 +87,124 @@ def split_rules_predicates(program):
                     automata_predicates.add(rule.head.get_predicate())
 
     return (non_recursive_rules, automata_rules, involved_predicates, automata_predicates)
+
+
+def entail_same_nonrecursive_predicates(D, delta_new, non_predicates):
+    for predicate in delta_new:
+        if predicate in non_predicates:
+            if predicate not in D:
+                 return False
+            for entity in delta_new[predicate]:
+                   if entity in D[predicate]:
+                       if not Interval.list_inclusion(delta_new[predicate][entity], D[predicate][entity]):
+                            return False
+                   else:
+                       return False
+    return True
+
+
+def pre_calculate_threshold(rules, propagation, D, D_index, non_predicates):
+    observed_rules = defaultdict(list)
+    if propagation == 1:
+        for rule in rules:
+            min_right = float("inf")
+            for tmp_literal in rule.body:
+                literal = copy.deepcopy(tmp_literal)
+                intervals = []
+                if isinstance(literal, BinaryLiteral):
+                    left_predicate = literal.left_literal.get_predicate()
+                    right_predicate = literal.right_literal.get_predicate()
+
+                    if left_predicate in ["Bottom", "Top"]:
+                        if right_predicate not in non_predicates:
+                            continue # it is not recursive
+                        for tmp_entity, tmp_context in ground_generator(literal.right_literal, dict(), D, D_index):
+                            literal.set_entity([tmp_entity])
+                            tmp_interval_list = apply(literal, D)
+                            intervals = intervals + tmp_interval_list
+
+                    elif right_predicate in ["Bottom", "Top"]:
+                        if left_predicate not in non_predicates:
+                            continue
+                        for tmp_entity, tmp_context in ground_generator(literal.left_literal, dict(), D, D_index):
+                            literal.set_entity([tmp_entity])
+                            tmp_interval_list = apply(literal, D)
+                            intervals = intervals + tmp_interval_list
+                    else:
+                        if left_predicate not in non_predicates or right_predicate not in non_predicates:
+                            continue
+                        for left_entity, tmp_context1 in ground_generator(literal.left_literal, dict(), D):
+                            for right_entity, tmp_context2 in ground_generator(literal.right_literal, tmp_context1, D):
+                                literal.set_entity([left_entity, right_entity])
+                                tmp_interval_list = apply(literal, D)
+                                intervals = intervals + tmp_interval_list
+                else:
+                    if literal.get_predicate() not in non_predicates:
+                        continue
+                    for tmp_entity, tmp_context in ground_generator(literal, dict(), D, D_index):
+                        literal.set_entity(tmp_entity)
+                        tmp_interval_list = apply(literal, D)
+                        intervals = intervals + tmp_interval_list
+
+                if len(intervals) != 0:
+                    tmp_max_right = max([item.right_value for item in intervals])
+                    min_right = min(tmp_max_right, min_right)
+                else:
+                    rules.remove(rule)
+                    break
+
+            if min_right != float("inf"):
+                observed_rules[min_right].append(rule)
+
+    # backward propagation
+    elif propagation == 2:
+        for rule in rules:
+            max_left = float("-inf")
+            for literal in rule.body:
+                intervals = []
+                if isinstance(literal, BinaryLiteral):
+                    left_predicate = literal.left_literal.get_predicate()
+                    right_predicate = literal.right_literal.get_predicate()
+
+                    if left_predicate in ["Bottom", "Top"]:
+                        if right_predicate not in non_predicates:
+                            continue  # it is not recursive
+                        for tmp_entity, tmp_context in ground_generator(literal.right_literal, dict(), D, D_index):
+                            literal.set_entity([tmp_entity])
+                            tmp_interval_list = apply(literal, D)
+                            intervals = intervals + tmp_interval_list
+
+                    elif right_predicate in ["Bottom", "Top"]:
+                        if left_predicate not in non_predicates:
+                            continue
+                        for tmp_entity, tmp_context in ground_generator(literal.left_literal, dict(), D, D_index):
+                            literal.set_entity([tmp_entity])
+                            tmp_interval_list = apply(literal, D)
+                            intervals = intervals + tmp_interval_list
+                    else:
+                        if left_predicate not in non_predicates or right_predicate not in non_predicates:
+                            continue
+                        for left_entity, tmp_context1 in ground_generator(literal.left_literal, dict(), D):
+                            for right_entity, tmp_context2 in ground_generator(literal.right_literal, tmp_context1, D):
+                                literal.set_entity([left_entity, right_entity])
+                                tmp_interval_list = apply(literal, D)
+                                intervals = intervals + tmp_interval_list
+                else:
+                    for tmp_entity, tmp_context in ground_generator(literal, dict(), D, D_index):
+                        literal.set_entity([tmp_entity])
+                        tmp_interval_list = apply(literal, D)
+                        intervals = intervals + tmp_interval_list
+
+                if len(intervals) != 0:
+                    tmp_min_left = min([item.left_value for item in intervals])
+                    min_right = max(tmp_min_left, max_left)
+                else:
+                    rules.remove(rule)
+                    break
+
+            if max_left != float("-inf"):
+                observed_rules[max_left].append(rule)
+
+    observed_rules = sorted(observed_rules.items(), key=lambda item: item[0])
+    return observed_rules
+

@@ -1,0 +1,2 @@
+Boxminus[0,1]HeavyWind(X):-Boxminus[0,1]HeavyWindForce(X)
+HeavyWindAffectedState(X):-HeavyWind(Y),LocatedInState(Y,X)

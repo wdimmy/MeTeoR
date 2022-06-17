@@ -24,18 +24,23 @@ from meteor_reasoner.utils.loader import load_dataset, load_program
 # a1:name(http://www.department6.university2.edu/associateprofessor8/publication1,publication1)@(74.5,77.5]
 # """
 
-D= ["R1(c1,c2)@[0,1]", "R2(c1,c2)@[1,2]", "R3(c2,c3)@[2,3]", "R5(c2)@[0,1]"]
-Program = [
-    "R1(X,Y):- Diamondminus[1,1]R1(X,Y)",
-    "Boxplus[1,1]R5(Y):- R2(X,Y),Boxplus[1,2]R3(Y,Z)",
-    "R4(X):- Diamondminus[0,1]R5(X)",
-    "R6(Y):-R5(Y), Boxminus[0,2]R4(Y),R1(X,Y)"
-]
+# D= ["R1(c1,c2)@[0,1]", "R2(c1,c2)@[1,2]", "R3(c2,c3)@[2,3]", "R5(c2)@[0,1]"]
+# Program = [
+#     "R1(X,Y):- Diamondminus[1,1]R1(X,Y)",
+#     "Boxplus[1,1]R5(Y):- R2(X,Y),Boxplus[1,2]R3(Y,Z)",
+#     "R4(X):- Diamondminus[0,1]R5(X)",
+#     "R6(Y):-R5(Y), Boxminus[0,2]R4(Y),R1(X,Y)"
+# ]
 
-D = load_dataset(D)
+with open("/experiments/AAAI2023/programs/case_10_dataset.txt") as file:
+    data = file.readlines()
+with open("/experiments/AAAI2023/programs/case_10_program.txt") as file:
+    program = file.readlines()
+
+D = load_dataset(data)
 D_index = build_index(D)
-rules = load_program(Program)
-for i in range(1,4):
+rules = load_program(program)
+for i in range(1,10):
     print("Iteration:", i)
     print("=====================")
     print("Before D:")
@@ -46,6 +51,7 @@ for i in range(1,4):
     print("After D:")
     materialize(D, rules, D_index=D_index, delta_old=D, K=1)
     print_dataset(D)
+
 
 D= ["R1(c1,c2)@[0,1]", "R2(c1,c2)@[1,2]", "R3(c2,c3)@[2,3]", "R5(c2)@[0,1]"]
 Program = [

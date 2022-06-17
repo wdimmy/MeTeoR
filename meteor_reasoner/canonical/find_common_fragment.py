@@ -3,6 +3,7 @@ from meteor_reasoner.materialization.coalesce import *
 from meteor_reasoner.materialization.t_operator import naive_immediate_consequence_operator
 from meteor_reasoner.utils.ruler_interval import *
 from meteor_reasoner.canonical.class_common_fragment import CommonFragment
+import time
 
 
 class CanonicalRepresentation:
@@ -15,14 +16,32 @@ class CanonicalRepresentation:
         self.initilization()
 
     def initilization(self):
+        start_time = time.time()
         coalescing_d(self.D)
         build_index(self.D,  self.D_index)
         self.points, self.min_x, self.max_x = get_dataset_points_x(self.D, min_x_flag=True)
         self.base_interval = Interval(self.min_x, self.max_x, False, False)
         self.z, self.gcd = get_gcd(self.Program)
-        _, self.initial_ruler_intervals = get_initial_ruler_intervals(self.points, left_border= self.min_x-self.gcd,
+        self.left_initial_ruler_intervals, self.right_initial_ruler_intervals = get_initial_ruler_intervals(self.points, left_border= self.min_x-self.gcd,
                                                                       right_border=self.max_x+self.gcd, gcd=self.gcd)
+        self.left_initial_ruler_intervals = [
+            Interval(self.min_x-self.gcd, self.min_x-self.gcd, False, False),
+            Interval(self.min_x - self.gcd, self.min_x, True, True)] + self.left_initial_ruler_intervals
+        self.right_initial_ruler_intervals = self.right_initial_ruler_intervals +  [Interval(self.max_x + self.gcd, self.max_x + self.gcd, False, False),
+            Interval(self.max_x + self.gcd, self.max_x, True, True)
+        ]
+        # self.initial_ruler_intervals =[
+        #     Interval(self.min_x-self.gcd, self.min_x-self.gcd, False, False),
+        #     Interval(self.min_x - self.gcd, self.min_x, True, True),
+        #     Interval(self.min_x, self.min_x, False, False),
+        #     Interval(self.max_x, self.max_x, False, False),
+        #     Interval(self.max_x + self.gcd, self.max_x + self.gcd, False, False),
+        #     Interval(self.max_x + self.gcd, self.max_x, True, True)
+        # ]
+        # start_time = time.time()
         self.left_dict, self.right_dict = construct_left_right_pattern(self.points, self.gcd)
+        # self.left_dict = {"1.0": Decimal("1.0")}
+        # self.right_dict = {"1.0": Decimal("1.0")}
 
 
 def find_common_fragment(D1, D2, rules, varrho):
@@ -151,7 +170,7 @@ def has_same_facts(ruler_intervals1, ruler_intervals2, D):
 
 
 def build_left_ruler_intervals(left_interval_range, CR):
-    big_ruler_intervals = CR.initial_ruler_intervals[:]
+    big_ruler_intervals = CR.left_initial_ruler_intervals[:]
     base_index = big_ruler_intervals.index(Interval(CR.min_x, CR.min_x, False, False))
     starting_ruler_interval = big_ruler_intervals[base_index-2]
     while big_ruler_intervals[0].left_value >= left_interval_range.left_value:
@@ -237,9 +256,9 @@ def find_left_period(D, left_interval_range, CR, w):
 
 
 def build_right_ruler_intervals(right_interval_range, CR):
-    big_ruler_intervals = CR.initial_ruler_intervals[:]
-    base_index = CR.initial_ruler_intervals.index(Interval(CR.max_x, CR.max_x, False, False))
-    starting_ruler_interval = CR.initial_ruler_intervals[base_index+2]
+    big_ruler_intervals = CR.right_initial_ruler_intervals[:]
+    base_index = big_ruler_intervals.index(Interval(CR.max_x, CR.max_x, False, False))
+    starting_ruler_interval = big_ruler_intervals[base_index+2]
     while big_ruler_intervals[-1].right_value <= right_interval_range.right_value:
         ruler_interval_len = []
         cnt = 0
@@ -271,7 +290,8 @@ def build_right_ruler_intervals(right_interval_range, CR):
                                        True, True))
         if new_ruler_interval.right_value < right_interval_range.right_value:
             big_ruler_intervals = big_ruler_intervals + [new_ruler_interval]
-        elif new_ruler_interval.right_value == right_interval_range.right_value and new_ruler_interval.right_open == right_interval_range.right_open:
+        elif new_ruler_interval.right_value == right_interval_range.right_value and \
+                new_ruler_interval.right_open == right_interval_range.right_open:
             big_ruler_intervals = big_ruler_intervals + [new_ruler_interval]
         elif new_ruler_interval.right_value == right_interval_range.right_value and not right_interval_range.right_open:
             big_ruler_intervals = big_ruler_intervals + [new_ruler_interval]
@@ -341,11 +361,14 @@ def find_left_right_periods(CR, w, fact=None):
     left_period, left_len = defaultdict(list), 0
     right_period, right_len = defaultdict(list), 0
     cnt = 0
+    number_mat = 0
     while True:
         common_fragment = CommonFragment(CR.base_interval)
         common_fragment.common = Interval(Decimal("-inf"), Decimal("+inf"), True, True)
-        delta_new = naive_immediate_consequence_operator(D=CR.D, rules=CR.Program, D_index=CR.D_index)
 
+        delta_new = naive_immediate_consequence_operator(D=CR.D, rules=CR.Program, D_index=CR.D_index)
+        print("The number of mat:", number_mat)
+        number_mat += 1
         diff_delta = []
         terminate_flag = False
         for head_predicate in delta_new:
@@ -418,7 +441,7 @@ def find_left_right_periods(CR, w, fact=None):
 
         varrho_left_range = Interval(common_fragment.common.left_value, CR.min_x, common_fragment.common.left_open, True)
         varrho_right_range = Interval(CR.max_x, common_fragment.common.right_value, True, common_fragment.common.right_open)
-        if varrho_left_range.left_value in  [Decimal("-inf")] and varrho_right_range.right_value in [Decimal("+inf")]:
+        if varrho_left_range.left_value in [Decimal("-inf")] and varrho_right_range.right_value in [Decimal("+inf")]:
             return CR.D, common_fragment.common, None, None, None, None, None, None
 
         if varrho_left_range.left_value in [Decimal("-inf")]:

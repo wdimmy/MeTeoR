@@ -1,9 +1,10 @@
 from meteor_reasoner.classes.literal import *
 from functools import reduce
-from collections import defaultdict
-from meteor_reasoner.classes.term import *
-import math
+from meteor_reasoner.classes.atom import Atom
 from meteor_reasoner.classes.interval import Interval
+import math
+import decimal
+from decimal import Decimal
 
 
 def construct_left_right_pattern(points, gcd):
@@ -28,14 +29,16 @@ def construct_left_right_pattern(points, gcd):
     # the pattern's range [x, x+gcd], all other points will fall into this range
     for item in points:
         tmp = item
+        if left_end_point <= tmp <= right_end_point:
+            pattern.add(tmp)
         while True:
-            if left_end_point <= tmp <= right_end_point:
-                pattern.add(tmp)
-                break
             if tmp > right_end_point:
                 tmp -= gcd
             else:
                 tmp += gcd
+            if left_end_point <= tmp <= right_end_point:
+                pattern.add(tmp)
+                break
 
     pattern = list(pattern)
     pattern.sort()
@@ -87,6 +90,23 @@ def interval_intesection_intervallist(target, interval_list):
     return False
 
 
+def interval_inclusion_intervallist(target, interval_list):
+    """
+    Check whether an Interval instance has an intersection with one of the interval_list
+    Args:
+        target (an Interval instance):
+        interval_list (a list of Interval instances):
+
+    Returns:
+        Boolean
+
+    """
+    for interval in interval_list:
+        if Interval.inclusion(target, interval):
+            return True
+    return False
+
+
 def get_conditions(literals, d):
     """
     This function return the accepting conditions according to the direction ``d''.
@@ -102,20 +122,20 @@ def get_conditions(literals, d):
     for literal in literals:
         if d == "left":
             if isinstance(literal, BinaryLiteral):
-                if literal.operator.right_value == float("inf") and literal.operator.name == "Since":
+                if literal.operator.right_value == Decimal("inf") and literal.operator.name == "Since":
                     F.append(literal)
             else:
                 if isinstance(literal, Literal) and len(literal.operators) == 1 and (
-                        literal.operators[0].right_value == float("inf")) and literal.operators[0].name == "Boxminus":
+                        literal.operators[0].right_value == Decimal("inf")) and literal.operators[0].name == "Boxminus":
                     F.append(literal)
 
         else:
             if isinstance(literal, BinaryLiteral):
-                if literal.operator.left_value == float("inf") and literal.operator.opName == "U":
+                if literal.operator.left_value == Decimal("inf") and literal.operator.opName == "U":
                     F.append(literal)
             else:
                 if isinstance(literal, Literal) and len(literal.operators) == 1 and (
-                        literal.operators[0].right_value == float("inf")) and literal.operators[0].name == "Boxplus":
+                        literal.operators[0].right_value == Decimal("inf")) and literal.operators[0].name == "Boxplus":
                     F.append(literal)
     return F
 
@@ -165,7 +185,18 @@ def get_initial_ruler_intervals(points, left_border, right_border, gcd):
     return windows_interval_len, windows_interval_left_right_values
 
 
-def get_dataset_points_x(D):
+def get_constants(D, Program=None):
+    constants = set()
+    for predicate in D:
+        for entitiy in D[predicate]:
+            for term in entitiy:
+                if term.name != "nan":
+                    constants.add(term.name)
+    return list(constants)
+
+
+
+def get_dataset_points_x(D, min_x_flag=False):
     """
     This function return all distinct points and the maximum point.
     Args:
@@ -174,29 +205,38 @@ def get_dataset_points_x(D):
     Returns:
          (set, int)
     """
-    max_x = 0
+    max_x = decimal.Decimal("-inf")
+    min_x = decimal.Decimal("+inf")
     points = set()
     for predicate in D:
         if type(D[predicate]) == list:
             for interval in D[predicate]:
-                if interval.left_value not in [float("inf"), float("-inf")]:
+                if interval.left_value not in [Decimal("inf"), Decimal("-inf")]:
                     points.add(interval.left_value)
-                    max_x = max(max_x, abs(interval.left_value))
-                if interval.right_value not in [float("inf"), float("-inf")]:
+                    max_x = max(max_x, interval.left_value)
+                    min_x = min(min_x, interval.left_value)
+                if interval.right_value not in [Decimal("inf"), Decimal("-inf")]:
                     points.add(interval.right_value)
-                    max_x = max(max_x, abs(interval.right_value))
+                    max_x = max(max_x, interval.right_value)
+                    min_x = min(min_x, interval.right_value)
         else:
             for entity in D[predicate]:
                 for interval in D[predicate][entity]:
-                    if interval.left_value not in [float("inf"), float("-inf")]:
+                    if interval.left_value not in [Decimal("inf"), Decimal("-inf")]:
                         points.add(interval.left_value)
-                        max_x = max(max_x, abs(interval.left_value))
-                    if interval.right_value not in [float("inf"), float("-inf")]:
+                        max_x = max(max_x, interval.left_value)
+                        min_x = min(min_x, interval.left_value)
+                    if interval.right_value not in [Decimal("inf"), Decimal("-inf")]:
                         points.add(interval.right_value)
-                        max_x = max(max_x, abs(interval.right_value))
+                        max_x = max(max_x, interval.right_value)
+                        min_x = min(min_x, interval.left_value)
+
     points = list(points)
     points.sort()
-    return points, max_x
+    if min_x_flag:
+        return points, min_x, max_x
+    else:
+        return points, max_x
 
 
 def get_gcd(program):
@@ -211,26 +251,28 @@ def get_gcd(program):
     numbers = set()
     for rule in program:
         body = rule.body
-        for literal in body:
+        for literal in body + [rule.head]:
             if isinstance(literal, Atom):
                 continue
 
             elif isinstance(literal, BinaryLiteral):
-                if literal.operator.interval.left_value not in [float("inf"), float("-inf")]:
-                    numbers.add(literal.operator.interval.left_value )
-                if literal.operator.interval.right_value not in [float("inf"), float("-inf")]:
+                if literal.operator.interval.left_value not in [Decimal("inf"), Decimal("-inf")]:
+                    numbers.add(literal.operator.interval.left_value)
+                if literal.operator.interval.right_value not in [Decimal("inf"), Decimal("-inf")]:
                     numbers.add(literal.operator.interval.right_value)
 
             else:
                 for operator in literal.operators:
-                    if operator.interval.left_value not in [float("inf"), float("-inf")]:
+                    if operator.interval.left_value not in [Decimal("inf"), Decimal("-inf")]:
                         numbers.add(operator.interval.left_value)
-                    if operator.interval.right_value not in [float("inf"), float("-inf")]:
+                    if operator.interval.right_value not in [Decimal("inf"), Decimal("-inf")]:
                         numbers.add(operator.interval.right_value )
 
     precisions = [len(str(item).split(".")[1]) for item in numbers if len(str(item).split("."))==2]
-    if len(precisions)==0:
+    if len(precisions)==0 and len(numbers) !=0:
         return max(numbers), reduce(lambda x, y: math.gcd(int(x), int(y)), numbers)
+    elif len(precisions) == 0 and len(numbers) ==0:
+        return 1
     else:
         aug = 10 ** max(precisions)
         aug_numbers = [item*aug for item in numbers]
@@ -261,18 +303,18 @@ def window_contain_accepting_conditions(F, W, subset_conditions, d):
           elif isinstance(condition, Literal):
              if condition.atom not in ruler_intervals_literals[ruler_interval]:
                 if d == "left":
-                   operator1 = Operator("Boxminus", Interval(0, float("inf"), False, True))
+                   operator1 = Operator("Boxminus", Interval(0, Decimal("inf"), False, True))
                    literal1 = Literal(condition.atom, [operator1])
-                   operator2 = Operator("Boxminus", Interval(0, float("inf"), True, True))
+                   operator2 = Operator("Boxminus", Interval(0, Decimal("inf"), True, True))
                    literal2 = Literal(condition.atom, [operator2])
                    if literal1 in F:
                       subset_conditions.add(literal1)
                    if literal2 in F:
                       subset_conditions.add(literal2)
                 else:
-                    operator1 = Operator("Boxplus", Interval(0, float("inf"), False, True))
+                    operator1 = Operator("Boxplus", Interval(0, Decimal("inf"), False, True))
                     literal1 = Literal(condition.atom, [operator1])
-                    operator2 = Operator("Boxplus", Interval(0, float("inf"), True, True))
+                    operator2 = Operator("Boxplus", Interval(0, Decimal("inf"), True, True))
                     literal2 = Literal(condition.atom, [operator2])
                     if literal1 in F:
                        subset_conditions.add(literal1)
@@ -309,36 +351,36 @@ def extract_dataset(D, involved_predicates, automata_predicates=[]):
                 atoms.append(atom)
                 if predicate in automata_predicates:
                     literal = Literal(Atom(predicate),
-                                       [Operator("Boxminus", Interval(0, float("inf"), False, True))])
+                                       [Operator("Boxminus", Interval(0, Decimal("inf"), False, True))])
                     unbounded_literals.append(literal)
-                    literal = Literal(Atom(predicate),
-                                       [Operator("Boxminus", Interval(0, float("inf"), True, True))])
-                    unbounded_literals.append(literal)
+                    # literal = Literal(Atom(predicate),
+                    #                    [Operator("Boxminus", Interval(0, Decimal("inf"), True, True))])
+                    # unbounded_literals.append(literal)
 
                     literal = Literal(Atom(predicate),
-                                      [Operator("Boxmplus", Interval(0, float("inf"), False, True))])
+                                      [Operator("Boxmplus", Interval(0, Decimal("inf"), False, True))])
                     unbounded_literals.append(literal)
-                    literal = Literal(Atom(predicate),
-                                      [Operator("Boxmplus", Interval(0, float("inf"), True, True))])
-                    unbounded_literals.append(literal)
+                    # literal = Literal(Atom(predicate),
+                    #                   [Operator("Boxmplus", Interval(0, Decimal("inf"), True, True))])
+                    # unbounded_literals.append(literal)
             else:
                 for entity in D[predicate]:
                     atom = Atom(predicate, entity)
                     atoms.append(atom)
                     if predicate in automata_predicates:
                         literal = Literal(Atom(predicate, entity),
-                                          [Operator("Boxminus", Interval(0, float("inf"), False, True))])
+                                          [Operator("Boxminus", Interval(0, Decimal("inf"), False, True))])
                         unbounded_literals.append(literal)
-                        literal = Literal(Atom(predicate, entity),
-                                          [Operator("Boxminus", Interval(0, float("inf"), True, True))])
-                        unbounded_literals.append(literal)
+                        # literal = Literal(Atom(predicate, entity),
+                        #                   [Operator("Boxminus", Interval(0, Decimal("inf"), True, True))])
+                        # unbounded_literals.append(literal)
 
                         literal = Literal(Atom(predicate, entity),
-                                          [Operator("Boxplus", Interval(0, float("inf"), False, True))])
+                                          [Operator("Boxplus", Interval(0, Decimal("inf"), False, True))])
                         unbounded_literals.append(literal)
-                        literal = Literal(Atom(predicate, entity),
-                                          [Operator("Boxplus", Interval(0, float("inf"), True, True))])
-                        unbounded_literals.append(literal)
+                        # literal = Literal(Atom(predicate, entity),
+                        #                   [Operator("Boxplus", Interval(0, Decimal("inf"), True, True))])
+                        # unbounded_literals.append(literal)
 
     return atoms, unbounded_literals
 
@@ -352,7 +394,7 @@ def extract_program(program, involved_predicates):
             continue
         for literal in rule.body():
             if isinstance(literal, BinaryLiteral):
-                if literal.left_literal.get_predicate() in involved_predicates or literal.right_literal.get_predicate() in involved_predicates:
+                if literal.left_atom.get_predicate() in involved_predicates or literal.right_atom.get_predicate() in involved_predicates:
                     literals.add(literal)
             elif isinstance(literal, Literal):
                 if literal.get_predicate() in involved_predicates:

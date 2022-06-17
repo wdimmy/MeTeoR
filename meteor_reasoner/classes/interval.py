@@ -476,9 +476,9 @@ if __name__ == "__main__":
     # exit()
 
     a = [Interval(0, 0, False, False), Interval(2.0, 5, False, False)]
-    b = [Interval(0.0, 0.0, False, False)]
-
-    print(Interval.list_inclusion(b, a))
+    b = [Interval(0.0, 0.0, False, False), Interval(2.0, 3.0, False, False)]
+    c = [Interval(0.0, 0.0, False, False), Interval(2.0, 3.0, False, False)]
+    print(Interval.list_inclusion(c, b))
     exit()
 
     c = Interval.diff_list(b, a)

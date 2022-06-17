@@ -1,7 +1,5 @@
 from meteor_reasoner.classes.literal import *
 from functools import reduce
-from collections import defaultdict
-from meteor_reasoner.classes.term import *
 from meteor_reasoner.classes.atom import *
 from meteor_reasoner.classes.interval import *
 import math
@@ -26,20 +24,15 @@ def construct_left_right_pattern(points, gcd):
     right_end_point = points[0] + gcd
 
     pattern = set()
-
+    pattern.add(left_end_point)
+    pattern.add(right_end_point)
     # the pattern's range [x, x+gcd], all other points will fall into this range
     for item in points:
-        tmp = item
-        if left_end_point <= tmp <= right_end_point:
-            pattern.add(tmp)
-        while True:
-            if tmp > right_end_point:
-                tmp -= gcd
-            else:
-                tmp += gcd
-            if left_end_point <= tmp <= right_end_point:
-                pattern.add(tmp)
-                break
+        a, b = divmod(item-left_end_point, gcd)
+        if a == 0:
+            continue
+        else:
+            pattern.add(b)
 
     pattern = list(pattern)
     pattern.sort()
@@ -72,6 +65,7 @@ def construct_left_right_pattern(points, gcd):
     if len(right_interval_search_dict) == 0:
         right_interval_search_dict["1.0"] = 1
     return left_interval_search_dict, right_interval_search_dict
+
 
 
 def interval_intesection_intervallist(target, interval_list):
@@ -148,42 +142,106 @@ def get_initial_ruler_intervals(points, left_border, right_border, gcd):
         left_border (float): the most left minimum value  of the Window
         right_border(float):  the most right maximum value  of the Window
         gcd (float):
-
     Returns:
     """
-    initial_ruler_intervals = set()
-    for point in points:
-        left = point
-        while left_border <= left:
-            if left_border <= left <= right_border:
-                initial_ruler_intervals.add(left)
-            left -= gcd
 
-        right = point + gcd
-        while right <= right_border:
-            if left_border <= right <= right_border:
-                initial_ruler_intervals.add(right)
-            right += gcd
+    points = list(points)
+    points.sort()
 
-    initial_ruler_intervals = list(initial_ruler_intervals)
-    initial_ruler_intervals.sort()
+    left_end_point = points[0]
+    right_end_point = points[0] + gcd
 
-    windows_interval_len = []  # from left to right
-    windows_interval_left_right_values = []
-    for i in range(len(initial_ruler_intervals)):
-        if i == len(initial_ruler_intervals) - 1:
-            windows_interval_len.append(0)
-            windows_interval_left_right_values.append(Interval(initial_ruler_intervals[i], initial_ruler_intervals[i], False, False))
-
+    pattern = set()
+    pattern.add(left_end_point)
+    pattern.add(right_end_point)
+    # the pattern's range [x, x+gcd], all other points will fall into this range
+    for item in points:
+        a, b = divmod(item-left_end_point, gcd)
+        if a == 0:
+            continue
         else:
-            windows_interval_len.append(0)
-            windows_interval_left_right_values.append(
-                Interval(initial_ruler_intervals[i], initial_ruler_intervals[i], False, False))
-            windows_interval_len.append(initial_ruler_intervals[i + 1] - initial_ruler_intervals[i])
-            windows_interval_left_right_values.append(
-                Interval(initial_ruler_intervals[i], initial_ruler_intervals[i+1], True, True))
+            pattern.add(b)
 
-    return windows_interval_len, windows_interval_left_right_values
+    pattern = list(pattern)
+    pattern.sort()
+
+
+    left_initial_intervals = []
+    for i in range(len(pattern)):
+        if i == len(pattern) - 1:
+            left_initial_intervals.append(
+                Interval(pattern[i], pattern[i], False, False))
+        else:
+            left_initial_intervals.append(
+                Interval(pattern[i], pattern[i], False, False))
+            left_initial_intervals.append(
+                Interval(pattern[i], pattern[i + 1], True, True))
+
+
+    left_end_point = points[-1]-gcd
+    right_end_point = points[-1]
+
+    pattern = set()
+    pattern.add(left_end_point)
+    pattern.add(right_end_point)
+    # the pattern's range [x, x+gcd], all other points will fall into this range
+    for item in points:
+        a, b = divmod(right_end_point - item, gcd)
+        if a == 0:
+            continue
+        else:
+            pattern.add(left_end_point + b)
+
+    pattern = list(pattern)
+    pattern.sort()
+
+    right_initial_intervals = []
+    for i in range(len(pattern)):
+        if i == len(pattern) - 1:
+            right_initial_intervals.append(
+                Interval(pattern[i], pattern[i], False, False))
+        else:
+            right_initial_intervals.append(
+                Interval(pattern[i], pattern[i], False, False))
+            right_initial_intervals.append(
+                Interval(pattern[i], pattern[i + 1], True, True))
+
+    return left_initial_intervals, right_initial_intervals
+    #
+    #
+    #
+    # initial_ruler_intervals = set()
+    # for point in points:
+    #     left = point
+    #     while left_border <= left:
+    #         if left_border <= left <= right_border:
+    #             initial_ruler_intervals.add(left)
+    #         left -= gcd
+    #
+    #     right = point + gcd
+    #     while right <= right_border:
+    #         if left_border <= right <= right_border:
+    #             initial_ruler_intervals.add(right)
+    #         right += gcd
+    # initial_ruler_intervals = list(initial_ruler_intervals)
+    # initial_ruler_intervals.sort()
+
+    # windows_interval_len = []  # from left to right
+    # windows_interval_left_right_values = []
+    # for i in range(len(initial_ruler_intervals)):
+    #     if i == len(initial_ruler_intervals) - 1:
+    #         windows_interval_len.append(0)
+    #         windows_interval_left_right_values.append(Interval(initial_ruler_intervals[i], initial_ruler_intervals[i], False, False))
+    #
+    #     else:
+    #         windows_interval_len.append(0)
+    #         windows_interval_left_right_values.append(
+    #             Interval(initial_ruler_intervals[i], initial_ruler_intervals[i], False, False))
+    #         windows_interval_len.append(initial_ruler_intervals[i + 1] - initial_ruler_intervals[i])
+    #         windows_interval_left_right_values.append(
+    #             Interval(initial_ruler_intervals[i], initial_ruler_intervals[i+1], True, True))
+    #return windows_interval_len, windows_interval_left_right_values
+
 
 
 def get_dataset_points_x(D, min_x_flag=False):
@@ -258,15 +316,16 @@ def get_gcd(program):
                     if operator.interval.right_value not in [Decimal("inf"), Decimal("-inf")]:
                         numbers.add(operator.interval.right_value )
 
-    precisions = [len(str(item).split(".")[1]) for item in numbers if len(str(item).split("."))==2]
-    if len(precisions)==0 and len(numbers) !=0:
+    precisions = [len(str(item).split(".")[1]) for item in numbers if len(str(item).split(".")) == 2]
+    if len(precisions) == 0 and len(numbers) != 0:
         return max(numbers), reduce(lambda x, y: math.gcd(int(x), int(y)), numbers)
-    elif len(precisions) == 0 and len(numbers) ==0:
+    elif len(precisions) == 0 and len(numbers) == 0:
         return 1, 1
     else:
         aug = 10 ** max(precisions)
         aug_numbers = [item*aug for item in numbers]
         gcd = reduce(lambda x, y: math.gcd(int(x), int(y)), aug_numbers) / aug
+        gcd = decimal.Decimal(gcd)
         return max(numbers), gcd
 
 
@@ -278,9 +337,7 @@ def window_contain_accepting_conditions(F, W, subset_conditions, d):
         W (AutomtataWindow instance):
         subset_conditions:
         d:
-
     Returns:
-
     """
     ruler_intervals = W.ruler_intervals
     ruler_intervals_literals = W.ruler_intervals_literals

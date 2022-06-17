@@ -18,3 +18,4 @@ experiments/JWS/*
 !experiments/JWS/traffic1.txt
 !experiments/KR2022/
 !experiments/RR2022/
+!experiments/AAAI2022/

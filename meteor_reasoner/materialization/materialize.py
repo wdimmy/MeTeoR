@@ -4,8 +4,9 @@ from meteor_reasoner.materialization.index_build import *
 from meteor_reasoner.utils.propagation import check_propagation
 from meteor_reasoner.graphutil.temporal_dependency_graph import CycleFinder
 import time
-from meteor_reasoner.materialization.utils import no_new_facts
+from meteor_reasoner.materialization.utils import no_new_facts, pre_calculate_threshold, entail_same_nonrecursive_predicates
 from meteor_reasoner.utils.operate_dataset import save_dataset_to_file
+
 
 def calculate_redundancy(delta, old):
     cnt = 0
@@ -93,7 +94,7 @@ def naive_combine(D, delta_new, D_index=None):
     return fixpoint
 
 
-def materialize(D, rules, D_index, seminaive=False, delta_old=None, K=100, logger=None, recorder=None):
+def materialize(D, rules, D_index, seminaive=False, delta_old=None, K=100, logger=None, must_literals=None):
     """
     The function implements the materialization operation.
     Args:
@@ -111,13 +112,9 @@ def materialize(D, rules, D_index, seminaive=False, delta_old=None, K=100, logge
     while k < K:
         k += 1
         if seminaive:
-            semi_start_time = time.time()
-            delta_new = seminaive_immediate_consequence_operator(rules, D, D_index, k=k, delta_old=delta_old)
-            #print("One semi round:", time.time()-semi_start_time)
+            delta_new = seminaive_immediate_consequence_operator(rules, D, D_index, delta_old=delta_old, must_literals=must_literals)
         else:
-            naive_start_time = time.time()
-            delta_new = naive_immediate_consequence_operator(rules, D, D_index, recorder=recorder)
-            #print("One naive round:", time.time() - naive_start_time)
+            delta_new = naive_immediate_consequence_operator(rules, D, D_index, must_literals=must_literals)
 
         if seminaive:
             delta_old = defaultdict(lambda: defaultdict(list))
@@ -136,32 +133,26 @@ def materialize(D, rules, D_index, seminaive=False, delta_old=None, K=100, logge
         else:
             if logger is not None:
                 delta_old = defaultdict(lambda: defaultdict(list))
-                naive_combine_start_time = time.time()
                 fixpoint = seminaive_combine(D, delta_new, delta_old, D_index)
-                tmp_start_time = time.time()
                 coalescing_d(delta_new)
                 number_of_redundant_facts = calculate_redundancy(delta_new, delta_old)
                 total_number = 0
                 for predicate in D:
                     for entity in D[predicate]:
                         total_number += len(D[predicate][entity])
-                calc_time += time.time() - tmp_start_time
                 logger.info("Iteration={}, t={}, D={}, n={}".format(k, time.time() - start_time - calc_time, total_number, number_of_redundant_facts))
             else:
                 fixpoint = naive_combine(D, delta_new, D_index)
 
         if fixpoint:
-            save_dataset_to_file("recursive_dataset.txt", D)
             return True
 
     return False
 
 
-def opt_materialize(D, rules, D_index, min_value=decimal.Decimal(0), max_value=decimal.Decimal(10000), delta_old=None, K=100, logger=None):
-    # preprocessing
+def opt_materialize(D, rules, D_index, delta_old, K=1, logger=None):
     CF = CycleFinder(program=rules)
     non_predicates = CF.get_non_recursive_predicates()
-    #print("Non-recursive predicates:", non_predicates)
     nr_program = list()
     r_program = list()
     for rule in rules:
@@ -169,135 +160,59 @@ def opt_materialize(D, rules, D_index, min_value=decimal.Decimal(0), max_value=d
             nr_program.append(rule)
         else:
             r_program.append(rule)
-    # for rule in nr_program:
-    #     print("rule:", rule)
-    # exit()
-    while True:
-        delta_new = seminaive_immediate_consequence_operator(nr_program, D, D_index, delta_old=delta_old)
-        delta_old = defaultdict(lambda: defaultdict(list))
-        fixpoint = seminaive_combine(D, delta_new, delta_old, D_index)
-        if fixpoint:
-            break
-    propagation = check_propagation(nr_program)
-    # forward propagation
-    observed_rules = defaultdict(list)
-    if propagation == 1:
-        print("Is a forward-propagating program!")
-        for rule in r_program:
-            min_right = float("inf")
-            for literal in rule.body:
-                if isinstance(literal, BinaryLiteral):
-                    predicate = literal.left_literal.get_predicate()
-                    if predicate in non_predicates:
-                        tmp_max_right = float("-inf")
-                        for entity in D[predicate]:
-                            tmp_max_right = max(tmp_max_right, max([interval.right_value for interval in D[predicate][entity]]))
 
-                        min_right = min(min_right, tmp_max_right)
-                    predicate = literal.right_literal.get_predicate()
-                    if predicate in non_predicates:
-                        tmp_max_right = float("-inf")
-                        for entity in D[predicate]:
-                            tmp_max_right = max(tmp_max_right,
-                                                max([interval.right_value for interval in D[predicate][entity]]))
-                        min_right = min(min_right, tmp_max_right)
-                else:
-                    predicate = literal.get_predicate()
-                    if predicate in non_predicates:
-                        tmp_max_right = float("-inf")
-                        for entity in D[predicate]:
-                            tmp_max_right = max(tmp_max_right,
-                                                max([interval.right_value for interval in D[predicate][entity]]))
-                        min_right = min(min_right, tmp_max_right)
-
-            if min_right != float("inf"):
-                observed_rules[min_right].append(rule)
-
-    # backward propagation
-    elif propagation == 2:
-        print("Is a backward-propagating program!")
-        for rule in r_program:
-            max_left = float("-inf")
-            for literal in rule.body:
-                if isinstance(literal, BinaryLiteral):
-                    predicate = literal.left_literal.get_predicate()
-                    if predicate in non_predicates:
-                        tmp_min_left = float("inf")
-                        for entity in D[non_predicates]:
-                           tmp_min_left = min(tmp_min_left, min([interval.left_value for interval in D[predicate][entity]]))
-
-                        max_left = max(max_left, tmp_min_left)
-                    predicate = literal.right_literal.get_predicate()
-                    if predicate in non_predicates:
-                        tmp_min_left = float("inf")
-                        for entity in D[non_predicates]:
-                            tmp_min_left = min(tmp_min_left,
-                                               min([interval.left_value for interval in D[predicate][entity]]))
-
-                        max_left = max(max_left, tmp_min_left)
-                else:
-                    predicate = literal.get_predicate()
-                    if predicate in non_predicates:
-                        tmp_min_left = float("inf")
-                        for entity in D[non_predicates]:
-                            tmp_min_left = min(tmp_min_left,
-                                               min([interval.left_value for interval in D[predicate][entity]]))
-
-                        max_left = max(max_left, tmp_min_left)
-
-            if max_left is not float("-inf"):
-                observed_rules[rule] = max_left
-
-    observed_rules = sorted(observed_rules.items(), key=lambda item: item[0])
-    # for key, value in observed_rules:
-    #     print(key, [str(v) for v in value])
-    # print("=====================")
-    # exit()
-    k=0
-    records = {}
+    flag = 0
+    k = 0
     if logger is not None:
-       start_time = time.time()
-       calc_time = 0.0
+        start_time = time.time()
+        calc_time = 0.0
 
-    delta_old = D
     while k < K:
         k += 1
-        if k == 9:
-            r_program = r_program[-8:]
-        delta_new = seminaive_immediate_consequence_operator(r_program, D, D_index, k=k,
-                                                                      delta_old=delta_old)
+        delta_new = seminaive_immediate_consequence_operator(rules, D, D_index, k=k, delta_old=delta_old)
+        if flag == 0:
+            if entail_same_nonrecursive_predicates(D, delta_new, non_predicates):
+                flag = 1
+                for rule in nr_program:
+                    rules.remove(rule)
 
-        if propagation == 1:
-            for i, item in enumerate(observed_rules):
-                if no_new_facts(delta_new, D, Interval(min_value, item[0], False, False)):
-                    for rule in item[1]:
-                        #print("Removed rule:", str(rule))
-                        try:
-                          r_program.remove(rule)
-                        except:
-                            continue
-                        #print("Number of remaining rules:", len(r_program))
-
+                if len(r_program) != 0:
+                    propagation = check_propagation(r_program)
+                    if propagation == 1 or propagation == 2:
+                        observed_rules = pre_calculate_threshold(rules, propagation, D, D_index, non_predicates)
                 else:
-                    observed_rules = observed_rules[i:]
-                    break
-            else:
-                observed_rules = observed_rules[i+1:]
+                    propagation = 0
 
-        elif propagation == 2:
-            for i, item in enumerate(observed_rules):
-                if no_new_facts(delta_new, D, Interval(item[0], max_value, False, False)):
-                    for rule in item[1]:
-                        r_program.remove(rule)
+        elif flag == 1 and propagation == 1:
+            if len(observed_rules) != 0:
+                for i, item in enumerate(observed_rules):
+                    if no_new_facts(delta_new, D, Interval(float("-inf"), item[0], True, False)):
+                        for rule in item[1]:
+                            try:
+                                rules.remove(rule)
+                            except:
+                                continue
+                    else:
+                        observed_rules = observed_rules[i:]
+                        break
                 else:
-                    observed_rules = observed_rules[i:]
-                    break
-            else:
-                observed_rules = observed_rules[i + 1:]
+                    observed_rules = observed_rules[i + 1:]
+
+        elif flag == 1 and propagation == 2:
+            if len(observed_rules) != 0:
+                for i, item in enumerate(observed_rules):
+                    if no_new_facts(delta_new, D, Interval(item[0], float("inf"), False, True)):
+                        for rule in item[1]:
+                             rules.remove(rule)
+                    else:
+                        observed_rules = observed_rules[i:]
+                        break
+                else:
+                    observed_rules = observed_rules[i + 1:]
 
         delta_old = defaultdict(lambda: defaultdict(list))
+        semi_combine_start_time = time.time()
         fixpoint = seminaive_combine(D, delta_new, delta_old, D_index)
-
         if logger is not None:
             tmp_start_time = time.time()
             coalescing_d(delta_new)
@@ -306,10 +221,13 @@ def opt_materialize(D, rules, D_index, min_value=decimal.Decimal(0), max_value=d
             for predicate in D:
                 for entity in D[predicate]:
                     total_number += len(D[predicate][entity])
-            calc_time += time.time()-tmp_start_time
-            logger.info("Iteration={}, t={}, D={}, n={}".format(k, time.time() - start_time-calc_time, total_number, number_of_redundant_facts))
+            calc_time += time.time() - tmp_start_time
+            logger.info("Iteration={}, t={}, D={}, n={}".format(k, time.time() - start_time - calc_time,
+                                                                total_number, number_of_redundant_facts))
         if fixpoint:
+            save_dataset_to_file("recursive_dataset.txt", D)
             return True
+
     return False
 
 
@@ -317,41 +235,66 @@ if __name__ == "__main__":
     from meteor_reasoner.utils.operate_dataset import print_dataset
     from meteor_reasoner.utils.loader import *
 
+    # start_time = time.time()
+    # raw_program = [
+    #     "P(X,Y):-Diamondminus[0,1]P(X,Y)",
+    #     "R(Y):-Boxminus[1,2]Q(Y),H(Z),P(X,Y)",
+    #     "Q(X):-K(X,Y)"
+    # ]
+    # raw_data = [
+    #     "P(a,b)@0",
+    #     "K(b,c)@[1,2]",
+    #     "H(c)@[2,5]"
+    # ]
+    # D = load_dataset(raw_data)
+    # coalescing_d(D)
+    # D_index = build_index(D)
+    # program = load_program(raw_program)
+    # opt_materialize(D, rules=program, D_index=D_index, delta_old=D, K=1000)
+    # print("Optimized method time: ", time.time()-start_time)
+    #
+    # exit()
     start_time = time.time()
     raw_program = [
-        "P(X,Y):-Diamondminus[0,1]P(X,Y)",
-        "R(Y):-Q(Y),H(Z),P(X,Y)",
-        "Q(X):-K(X,Y)"
+        "A(X):-Diamondminus[1,1]A(X)",
+        "B(Y):-Diamondminus[1,1]B(Y)",
+        "C(X):-A(X), B(X), D(X)"
     ]
     raw_data = [
-        "P(a,b)@0",
-        "K(b,c)@[1,2]",
-        "H(c)@[2,5]"
+        "A(a)@1",
+        "B(a)@1",
+        "D(a)@(-inf,+inf)"
     ]
+
     D = load_dataset(raw_data)
     coalescing_d(D)
     D_index = build_index(D)
     program = load_program(raw_program)
-    opt_materialize(D, rules=program, D_index=D_index, delta_old=D, K=1000)
-    print("Optimized method time: ", time.time()-start_time)
+
+    materialize(D, rules=program, D_index=D_index, delta_old=D, seminaive=True, K=3)
+    print_dataset(D)
+    print("Seminaive method time: ", time.time() - start_time)
 
     start_time = time.time()
     raw_program = [
-        "P(X,Y):-Diamondminus[0,1]P(X,Y)",
-        "R(Y):-Q(Y),H(Z),P(X,Y)",
-        "Q(X):-K(X,Y)"
+        "A(X):-Diamondminus[1,1]A(X)",
+        "B(Y):-Diamondminus[1,1]B(Y)",
+        "C(X):-A(X), B(X), D(X)"
     ]
     raw_data = [
-        "P(a,b)@0",
-        "K(b,c)@[1,2]",
-        "H(c)@[2,5]"
+        "A(a)@1",
+        "B(a)@1",
+        "D(a)@(-inf,+inf)"
     ]
+
     D = load_dataset(raw_data)
     coalescing_d(D)
     D_index = build_index(D)
     program = load_program(raw_program)
-    materialize(D, rules=program, D_index=D_index, delta_old=D, seminaive=True, K=1000)
-    print("Seminaive method time: ", time.time() - start_time)
+    materialize(D, rules=program, D_index=D_index, delta_old=D, seminaive=False, K=3)
+    print("Naive method time: ", time.time() - start_time)
+    print_dataset(D)
+    exit()
 
     start_time = time.time()
     raw_program = [

@@ -3,11 +3,12 @@ from meteor_reasoner.automata.window import *
 from meteor_reasoner.automata.satisfy import *
 from meteor_reasoner.materialization.coalesce import *
 from meteor_reasoner.automata.guess import *
-from meteor_reasoner.materialization.apply import *
+from meteor_reasoner.materialization.utils import *
+import decimal
 
 
 class BuchiAutomata:
-    def __init__(self, D, program, unbounded_literals, p_literals, involved_predicates, automata_predicates,left_dict,
+    def __init__(self, D, program, unbounded_literals, p_literals, constants, involved_predicates, automata_predicates,left_dict,
                  right_dict, x, z, gcd, points):
         self.D = D
         self.program = program
@@ -16,6 +17,7 @@ class BuchiAutomata:
         self.gcd = gcd
         self.points = points
         self.p_literals = p_literals
+        self.constants = constants
 
         self.unbounded_literals = unbounded_literals
         self.window_ruler_interval_list = []
@@ -37,22 +39,24 @@ class BuchiAutomata:
         for literal in self.unbounded_literals:
             if d == "left":
                 if isinstance(literal, BinaryLiteral):
-                    if literal.operator.interval.right_value == float("inf") and literal.operator.name == "Since":
+                    if literal.operator.interval.right_value == decimal.Decimal("inf") and literal.operator.name == "Since":
                         F.add(literal)
                 else:
                     if isinstance(literal, Literal) and len(literal.operators) == 1 and (
-                            literal.operators[0].interval.right_value == float("inf")) and literal.operators[0].name == "Boxminus":
+                            literal.operators[0].interval.right_value == decimal.Decimal("inf")) and literal.operators[0].name == "Boxminus":
                         F.add(literal)
 
             else:
                 if isinstance(literal, BinaryLiteral):
-                    if literal.operator.interval.right_value == float("inf") and literal.operator.name == "Until":
+                    if literal.operator.interval.right_value == decimal.Decimal("inf") and literal.operator.name == "Until":
                         F.add(literal)
                 else:
                     if isinstance(literal, Literal) and len(literal.operators) == 1 and (
-                            literal.operators[0].interval.right_value == float("inf")) and literal.operators[0].name == "Boxplus":
+                            literal.operators[0].interval.right_value == decimal.Decimal("inf")) and literal.operators[0].name == "Boxplus":
                         F.add(literal)
         return F
+
+
 
     def build_prior(self, must_literals):
         initial_window_len, initial_window_ruler_intervals = get_initial_ruler_intervals(self.points,
@@ -68,25 +72,94 @@ class BuchiAutomata:
                 if interval_intesection_intervallist(ruler_interval, must_literals[literal]):
                     self.window_must_include_static[ruler_interval].append(literal)
                 if isinstance(literal, BinaryLiteral):
-                    if literal.left_literal.get_predicate() in self.automata_predicates or literal.right_literal.get_predicate() in self.automata_predicates:
+                    if literal.left_atom.get_predicate() in self.automata_predicates or literal.right_atom.get_predicate() in self.automata_predicates:
                         self.variable_literals.add(literal)
                 else:
                     if literal.get_predicate() in self.automata_predicates:
                         self.variable_literals.add(literal)
 
             for predicate in self.involved_predicates:
-                if type(self.D[predicate]) == list:
-                    if interval_intesection_intervallist(ruler_interval, self.D[predicate]):
-                        self.window_must_include_static[ruler_interval].append(Atom(predicate))
+                for entity in self.D[predicate]:
+                    if interval_intesection_intervallist(ruler_interval, self.D[predicate][entity]):
+                        self.window_must_include_static[ruler_interval].append(
+                            Atom(predicate, entity))
                     if predicate in self.automata_predicates:
-                        self.variable_literals.add(Atom(predicate))
-                else:
-                    for entity in self.D[predicate]:
-                        if interval_intesection_intervallist(ruler_interval, self.D[predicate][entity]):
-                            self.window_must_include_static[ruler_interval].append(
-                                Atom(predicate, entity))
-                        if predicate in self.automata_predicates:
-                            self.variable_literals.add(Atom(predicate, entity))
+                        self.variable_literals.add(Atom(predicate, entity))
+        program_variables = set()
+        for rule in self.program:
+            head = rule.head
+            if literal_contain_no_variable(head):
+                program_variables.add(head)
+
+            for literal in rule.body:
+               if literal_contain_no_variable(literal):
+                   program_variables.add(literal)
+
+               elif isinstance(literal, Atom):
+                   if literal.get_predicate() not in ["Bottom", "Top"]:
+                       for com_constants in combinations(self.constants, len(literal.entity)):
+                           tmp_dict = {}
+                           tmp_literal = copy.deepcopy(literal)
+                           for i in range(len(tmp_literal.entity)):
+                               if literal.entity[i].type == "variable":
+                                   if literal.entity[i].name not in tmp_dict:
+                                       tmp_literal.entity[i].name = com_constants[i]
+                                       tmp_literal.entity[i].type = "constant"
+                                       tmp_dict[literal.entity[i].name] = com_constants[i]
+                                   else:
+                                       tmp_literal.entity[i].name = tmp_dict[literal.entity[i].name]
+                           program_variables.add(tmp_literal)
+
+
+               elif isinstance(literal, Literal):
+                   if literal.get_predicate() not in ["Bottom", "Top"]:
+                       for com_constants in combinations(self.constants, len(literal.atom.entity)):
+                           tmp_dict = {}
+                           tmp_atom = copy.deepcopy(literal.atom)
+                           for i in range(len(tmp_atom.entity)):
+                               if tmp_atom.entity[i].type == "variable":
+                                   if tmp_atom.entity[i].name not in tmp_dict:
+                                       tmp_atom.entity[i].name = com_constants[i]
+                                       tmp_atom.entity[i].type = "constant"
+                                       tmp_dict[tmp_atom.entity[i].name] = com_constants[i]
+                                   else:
+                                       tmp_atom.entity[i].name = tmp_dict[tmp_atom.entity[i].name]
+                           tmp_literal = copy.deepcopy(literal)
+                           tmp_literal.atom  = tmp_atom
+                           program_variables.add(tmp_literal)
+
+               elif isinstance(literal, BinaryLiteral):
+                    left_atom = literal.left_atom
+                    right_atom = literal.right_atom
+                    if left_atom.get_predicate() not in ["Bottom", "Top"]:
+                        for left_com_constants in combinations(self.constants, len(left_atom.entity)):
+                            tmp_dict = {}
+                            left_tmp_atom = copy.deepcopy(left_atom)
+                            for i in range(len(left_tmp_atom.entity)):
+                                if left_tmp_atom.entity[i].type == "variable":
+                                    if left_tmp_atom.entity[i].name not in tmp_dict:
+                                        left_tmp_atom.entity[i].name = left_com_constants[i]
+                                        left_tmp_atom.entity[i].type = "constant"
+                                        tmp_dict[left_tmp_atom.entity[i].name] = left_com_constants[i]
+                                    else:
+                                        left_tmp_atom.entity[i].name = tmp_dict[left_tmp_atom.entity[i].name]
+                            for right_com_constants in combinations(self.constants, len(left_atom.entity)):
+                                right_tmp_atom = copy.deepcopy(right_atom)
+                                for i in range(len(right_tmp_atom.entity)):
+                                    if right_tmp_atom.entity[i].type == "variable":
+                                        if right_tmp_atom.entity[i].name not in tmp_dict:
+                                            right_tmp_atom.entity[i].name = right_com_constants[i]
+                                            right_tmp_atom.entity[i].type = "constant"
+                                            tmp_dict[right_tmp_atom.entity[i].name] = right_com_constants[i]
+                                        else:
+                                            right_tmp_atom.entity[i].name = tmp_dict[right_tmp_atom.entity[i].name]
+
+                                tmp_literal = copy.deepcopy(literal)
+                                tmp_literal.left_atom = left_tmp_atom
+                                tmp_literal.right_atom = right_tmp_atom
+                                program_variables.add(tmp_literal)
+
+        self.variable_literals = self.variable_literals | set(self.unbounded_literals) | program_variables
 
     def get_unbounded_literals_for_window(self, atom, ruler_interval, direction):
         """
@@ -111,20 +184,31 @@ class BuchiAutomata:
                 if atom not in self.window_must_include_static[next_ruler_interval]:
                     break
             else:
-                open_operator = Operator("Boxminus", Interval(0, float("inf"), True, True))
-                closed_operator = Operator("Boxminus", Interval(0, float("inf"), False, True))
-                unbounded_literals.append(Literal(atom, [open_operator]))
-                unbounded_literals.append(Literal(atom, [closed_operator]))
+                open_operator = Operator("Boxminus", Interval(decimal.Decimal(0), decimal.Decimal("inf"), True, True))
+                closed_operator = Operator("Boxminus", Interval(decimal.Decimal(0), decimal.Decimal("inf"), False, True))
+                open_unbounded_literal = Literal(atom, [open_operator])
+                close_unbounded_literal = Literal(atom, [closed_operator])
+                unbounded_literals.append(open_unbounded_literal)
+                unbounded_literals.append(close_unbounded_literal)
+                for rule in self.program:
+                    if len(rule.body) == 1 and rule.body[0] in [close_unbounded_literal, open_unbounded_literal]:
+                        unbounded_literals.append(rule.head)
+
         else:
             for i in range(start_i, len(self.window_ruler_interval_list)):
                 next_ruler_interval = self.window_ruler_interval_list[i]
                 if atom not in self.window_must_include_static[next_ruler_interval]:
                     break
             else:
-                open_operator = Operator("Boxplus", Interval(0, float("inf"), True, True))
-                closed_operator = Operator("Boxplus", Interval(0, float("inf"), False, True))
-                unbounded_literals.append(Literal(atom, [open_operator]))
-                unbounded_literals.append(Literal(atom, [closed_operator]))
+                open_operator = Operator("Boxplus", Interval(decimal.Decimal(0), decimal.Decimal("inf"), True, True))
+                closed_operator = Operator("Boxplus", Interval(decimal.Decimal(0), decimal.Decimal("inf"), False, True))
+                open_unbounded_literal = Literal(atom, [open_operator])
+                close_unbounded_literal = Literal(atom, [closed_operator])
+                unbounded_literals.append(open_unbounded_literal)
+                unbounded_literals.append(close_unbounded_literal)
+                for rule in self.program:
+                    if len(rule.body) == 1 and rule.body[0] in [close_unbounded_literal, open_unbounded_literal]:
+                        unbounded_literals.append(rule.head)
 
         return unbounded_literals
 
@@ -143,14 +227,14 @@ class BuchiAutomata:
         if last_ruler_interval_literals is not None:
             if direction == "left":
                 for literal in last_ruler_interval_literals:
-                    if isinstance(literal, Literal) and len(literal.operators) == 0 and literal.operators[ 0].name == "Boxminus" and\
-                            literal.operators[0].interval.right_value == float("inf"):
+                    if isinstance(literal, Literal) and len(literal.operators) == 1 and literal.operators[ 0].name == "Boxminus" and\
+                            literal.operators[0].interval.right_value == decimal.Decimal("inf"):
                         unbounded_must_literals.add(literal)
                         unbounded_must_literals.add(literal.atom)
             else:
                 for literal in last_ruler_interval_literals:
-                    if isinstance(literal, Literal) and len(literal.operators) == 0 and literal.operators[ 0].name == "Boxplus" and \
-                            literal.operators[0].interval.right_value == float("inf"):
+                    if isinstance(literal, Literal) and len(literal.operators) == 1 and literal.operators[ 0].name == "Boxplus" and \
+                            literal.operators[0].interval.right_value == decimal.Decimal("inf"):
 
                         unbounded_must_literals.add(literal)
                         unbounded_must_literals.add(literal.atom)
@@ -171,46 +255,80 @@ class BuchiAutomata:
             list of Atoms or Literal instances
 
         """
-        static_must_literals = self.window_must_include_static[ruler_interval]
-        unbounded_must_literals = []
+        static_must_literals = set(self.window_must_include_static[ruler_interval])
+        unbounded_must_literals = set()
         for literal in static_must_literals:
-            if isinstance(literal, Atom) and literal not in visited:
+            if isinstance(literal, Atom): # and literal not in visited:
                 if direction == "left":
                     res = self.get_unbounded_literals_for_window(literal, ruler_interval, "left")
                     if len(res) > 0:
                         visited[literal] = 1
-                        unbounded_must_literals += res
+                        unbounded_must_literals |= set(res)
                 else:
                     res = self.get_unbounded_literals_for_window(literal, ruler_interval, "right")
                     if len(res) > 0:
                         visited[literal] = 1
-                        unbounded_must_literals += res
+                        unbounded_must_literals |= set(res)
 
         if last_ruler_interval_literals is not None:
             if direction == "left":
                 for literal in last_ruler_interval_literals:
                     if isinstance(literal, Literal) and len(literal.operators) == 1 and literal.operators[0].name == "Boxminus" and \
-                            literal.operators[0].interval.right_value == float("inf"):
-                        unbounded_must_literals.append(literal)
-                        unbounded_must_literals.append(literal.atom)
+                            literal.operators[0].interval.right_value == decimal.Decimal("inf"):
+                        unbounded_must_literals.add(literal)
+                        unbounded_must_literals.add(literal.atom)
             else:
                 for literal in last_ruler_interval_literals:
                     if isinstance(literal, Literal) and len(literal.operators) == 1 and literal.operators[0].name == "Boxplus" and \
-                            literal.operators[0].interval.right_value == float("inf"):
-                        unbounded_must_literals.append(literal)
-                        unbounded_must_literals.append(literal.atom)
+                            literal.operators[0].interval.right_value == decimal.Decimal("inf"):
+                        unbounded_must_literals.add(literal)
+                        unbounded_must_literals.add(literal.atom)
 
-        for com_literals in chain.from_iterable(combinations(self.variable_literals, r)
-                                                   for r in range(len(self.variable_literals) + 1)):
+        # prunning
+        pruning_elements = set([atom for atom in self.variable_literals if not isinstance(atom, BinaryLiteral) and atom.get_predicate() == "New"])
+        # print("Variable literals:")
+        # print([str(literal) for literal in self.variable_literals])
+        if ruler_interval in self.window_ruler_interval_list:
+            for literal in self.variable_literals:
+                if isinstance(literal, Atom):
+                    if literal not in self.window_must_include_static[ruler_interval]:
+                        pruning_elements.add(literal)
+                        u_literal = Literal(literal, [Operator("Boxminus", Interval(0, Decimal("inf"), False, True))])
+                        pruning_elements.add(u_literal)
+                        u_literal = Literal(literal, [Operator("Boxplus", Interval(0, Decimal("inf"), False, True))])
+                        pruning_elements.add(u_literal)
+                        for p_literal in self.p_literals:
+                            if isinstance(p_literal, Literal) and len(p_literal.operators) == 1 and \
+                                    p_literal.operators[0].interval.left_value == p_literal.operators[0].interval.right_value == 0 and p_literal.atom == literal:
+                                pruning_elements.add(p_literal)
 
-            yield list(com_literals) + static_must_literals + unbounded_must_literals
+        left_variable_predicate = self.variable_literals - unbounded_must_literals - static_must_literals - pruning_elements
+        for com_literals in chain.from_iterable(combinations(left_variable_predicate, r)
+                                                   for r in range(len(left_variable_predicate) + 1)):
+            bounded_fix = set()
+            res = set(com_literals) | static_must_literals | unbounded_must_literals
+            for literal in res:
+                if isinstance(literal, Literal) and len(literal.operators) == 1 and literal.operators[0].name in  ["Boxminus", "Boxplus"] and \
+                    literal.operators[0].interval.right_value == decimal.Decimal("inf"):
+                    if literal.operators[0].interval.left_value == 0 and literal.operators[0].interval.left_open and literal.atom in res:
+                        new_bounded = copy.deepcopy(literal)
+                        new_bounded.operators[0].left_open = False
+                        if new_bounded not in res:
+                            bounded_fix.add(new_bounded)
+                    elif literal.operators[0].interval.left_value == 0 and not literal.operators[0].interval.left_open:
+                        new_bounded = copy.deepcopy(literal)
+                        new_bounded.operators[0].left_open = True
+                        if new_bounded not in res:
+                            bounded_fix.add(new_bounded)
+
+            yield res | bounded_fix
 
     def get_literals_for_window(self, window_ruler_interval_list,  visited, direction):
         def helper(index, result):
             if index == len(window_ruler_interval_list):
                 window_ruler_intervals_literals = dict()
                 for key, value in result.items():
-                    window_ruler_intervals_literals[key] = value
+                    window_ruler_intervals_literals[key] = set(value)
 
                 yield AutomataWindow(window_ruler_interval_list, window_ruler_intervals_literals,
                                      self.left_window_pattern_dict, self.right_window_pattern_dict)
@@ -221,7 +339,8 @@ class BuchiAutomata:
                 if index != 0:
                     last_interval_literals = result[window_ruler_interval_list[index-1]]
 
-                for com_literals in self.get_literals_for_ruler_interval_with_visited(window_ruler_interval_list[index], direction, visited, last_interval_literals):
+                for com_literals in self.get_literals_for_ruler_interval_with_visited(
+                        window_ruler_interval_list[index], direction, visited, last_interval_literals):
                     yield from helper(index+1, {**result, **{window_ruler_interval_list[index]: list(com_literals)}})
 
         yield from helper(0, {})
@@ -261,6 +380,23 @@ class BuchiAutomata:
                 last_interval = w.ruler_intervals[-1]
                 for com_literals in self.get_literals_for_ruler_interval_with_visited(last_interval, "right", visited, last_interval_literals):
                     w.ruler_intervals_literals[last_interval] = com_literals
+                    bottom_flag = False
+                    for ruler_interval in w.ruler_intervals:
+                        must_installed_heads = set()
+                        for rule in self.program:
+                            must_installed_heads |= return_must_heads(rule, installed_literals=w.ruler_intervals_literals[ruler_interval])
+                        w.ruler_intervals_literals[ruler_interval] |= must_installed_heads
+                        if Atom("Bottom") in must_installed_heads:
+                            bottom_flag = True
+                            break
+
+                    # begin: adding some must-be literals
+                    add_p_literals(self.p_literals, w)
+                    #end: adding some must-be literals
+
+                    if bottom_flag:
+                        continue
+
                     if not self.check_satisfy(w):
                         return None
                     else:
@@ -269,7 +405,6 @@ class BuchiAutomata:
 
         # This is a recursive version
         def helper(stack):
-
             if len(stack) > 0 and stack[-1].ruler_intervals[-1] == Interval(self.x+self.z, self.x+self.z, False, False):
                 yield stack[0], stack[-1]
                 return
@@ -280,11 +415,50 @@ class BuchiAutomata:
             last_interval = new_w.ruler_intervals[-1]
 
             for com_literals in self.get_literals_for_ruler_interval_with_visited(last_interval, "right", visited, last_interval_literals):
-                new_w.ruler_intervals_literals[last_interval] += com_literals
+                try:
+                    new_w.ruler_intervals_literals[last_interval] |= com_literals
+                except:
+                    print("hellow")
+                bottom_flag = False
+                for ruler_interval in new_w.ruler_intervals:
+                    must_installed_heads = set()
+                    for rule in self.program:
+                        must_installed_heads |= return_must_heads(rule, installed_literals=new_w.ruler_intervals_literals[
+                            ruler_interval])
+                    new_w.ruler_intervals_literals[ruler_interval] |= must_installed_heads
+                    if Atom("Bottom") in must_installed_heads:
+                        bottom_flag = True
+                        break
+                if bottom_flag:
+                    continue
+
+                # begin: adding some must-be literals
+                add_p_literals(self.p_literals, new_w)
+                # end: adding some must-be literals
+
+
                 if self.check_satisfy(new_w):
                     yield from helper(stack+[new_w])
+
         flag = True
         for w in self.get_literals_for_window(initial_window_ruler_intervals, visited, "right"):
+            bottom_flag = False
+            for ruler_interval in w.ruler_intervals:
+                must_installed_heads = set()
+                for rule in self.program:
+                    must_installed_heads |= return_must_heads(rule, installed_literals= w.ruler_intervals_literals[
+                        ruler_interval])
+                    w.ruler_intervals_literals[ruler_interval] |= must_installed_heads
+                if Atom("Bottom") in must_installed_heads:
+                    bottom_flag = True
+                    break
+            if bottom_flag:
+                continue
+
+            # begin: adding some must-be literals
+            add_p_literals(self.p_literals, w)
+            # end: adding some must-be literals
+
             if self.check_satisfy(w):
                 if flag:
                     res = guess_help(copy.deepcopy(w), copy.deepcopy(w))
@@ -295,7 +469,7 @@ class BuchiAutomata:
                         yield from helper([w])
 
                 else:
-                    yield from helper(w, copy.deepcopy(w))
+                    yield from helper([w])
 
     def consistency_check(self):
         """
@@ -335,6 +509,25 @@ class BuchiAutomata:
                     first_interval = W_prime.ruler_intervals[0]
                     for com_literals in self.get_literals_for_ruler_interval(first_interval,d, last_interval_literals):
                         W_prime.ruler_intervals_literals[first_interval] = com_literals
+
+                        bottom_flag = False
+                        for ruler_interval in W_prime.ruler_intervals:
+                            must_installed_heads = set()
+                            for rule in self.program:
+                                must_installed_heads |= return_must_heads(rule, installed_literals=
+                                W_prime.ruler_intervals_literals[
+                                    ruler_interval])
+                            W_prime.ruler_intervals_literals[ruler_interval] |= must_installed_heads
+                            if Atom("Bottom") in must_installed_heads:
+                                bottom_flag = True
+                                break
+                        if bottom_flag:
+                            continue
+
+                        # begin: adding some must-be literals
+                        add_p_literals(self.p_literals, W_prime)
+                        # end: adding some must-be literals
+
                         if self.check_satisfy(W_prime) and W_prime not in T + list(R):
                             T.append(W_prime)
                             label[W_prime] = set()
@@ -342,6 +535,7 @@ class BuchiAutomata:
                             break
                     else:
                         increase_flag = False
+
                 else:
                     W_prime = copy.deepcopy(W)
                     last_interval_literals = W_prime.ruler_intervals_literals[W_prime.ruler_intervals[-1]]
@@ -349,6 +543,23 @@ class BuchiAutomata:
                     last_interval = W_prime.ruler_intervals[-1]
                     for com_literals in self.get_literals_for_ruler_interval(last_interval, d, last_interval_literals):
                         W_prime.ruler_intervals_literals[last_interval] = com_literals
+                        bottom_flag = False
+                        for ruler_interval in W_prime.ruler_intervals:
+                            must_installed_heads = set()
+                            for rule in self.program:
+                                must_installed_heads |= return_must_heads(rule, installed_literals=
+                                W_prime.ruler_intervals_literals[
+                                    ruler_interval])
+                            W_prime.ruler_intervals_literals[ruler_interval] |= must_installed_heads
+                            if Atom("Bottom") in must_installed_heads:
+                                bottom_flag = True
+                                break
+                        if bottom_flag:
+                            continue
+
+                        # begin: adding some must-be literals
+                        add_p_literals(self.p_literals, W_prime)
+                        # end: adding some must-be literals
                         if self.check_satisfy(W_prime) and W_prime not in T + list(R):
                             T.append(W_prime)
                             label[W_prime] = set()
@@ -359,6 +570,7 @@ class BuchiAutomata:
                             break
                     else:
                         increase_flag = False
+
             subset_conditions = set()
             if (W in label and len(label[W]) != 0) or window_contain_accepting_conditions(F, W, subset_conditions, d):
                 label[W] = label[W].union(subset_conditions)
@@ -384,6 +596,23 @@ class BuchiAutomata:
                 for subset_literal in self.get_literals_for_ruler_interval(first_interval, d, last_interval_literals):
                     W_prime.ruler_intervals_literals[first_interval] = subset_literal
 
+                    bottom_flag = False
+                    for ruler_interval in W_prime.ruler_intervals:
+                        must_installed_heads = set()
+                        for rule in self.program:
+                            must_installed_heads |= return_must_heads(rule, installed_literals=
+                            W_prime.ruler_intervals_literals[
+                                ruler_interval])
+                        W_prime.ruler_intervals_literals[ruler_interval] |= must_installed_heads
+                        if Atom("Bottom") in must_installed_heads:
+                            bottom_flag = True
+                            break
+                    if bottom_flag:
+                        continue
+
+                    # begin: adding some must-be literals
+                    add_p_literals(self.p_literals, W_prime)
+                    # end: adding some must-be literals
                     if self.check_satisfy(W_prime) and W_prime in T + list(R):
                         if self.can_contribute(P, label[W_prime]):
                             N.append(W_prime)
@@ -396,6 +625,25 @@ class BuchiAutomata:
                 last_interval = W_prime.ruler_intervals[-1]
                 for subset_literal in self.get_literals_for_ruler_interval(last_interval, d, last_interval_literals):
                     W_prime.ruler_intervals_literals[last_interval] = subset_literal
+
+                    bottom_flag = False
+                    for ruler_interval in W_prime.ruler_intervals:
+                        must_installed_heads = set()
+                        for rule in self.program:
+                            must_installed_heads |= return_must_heads(rule, installed_literals=
+                            W_prime.ruler_intervals_literals[
+                                ruler_interval])
+                        W_prime.ruler_intervals_literals[ruler_interval] |= must_installed_heads
+                        if Atom("Bottom") in must_installed_heads:
+                            bottom_flag = True
+                            break
+
+                    if bottom_flag:
+                        continue
+
+                    # begin: adding some must-be literals
+                    add_p_literals(self.p_literals, W_prime)
+                    # end: adding some must-be literals
                     if self.check_satisfy(W_prime) and W_prime in T + list(R):
                         if self.can_contribute(P, label[W_prime]):
                             N.append(W_prime)
@@ -410,6 +658,7 @@ class BuchiAutomata:
     def check_satisfy(self, w):
         if not check_satisfy_dataset(w, self.D):
             return False
+
         ruler_intervals_literals = w.ruler_intervals_literals
         ruler_intervals = w.ruler_intervals
 
@@ -418,62 +667,49 @@ class BuchiAutomata:
 
         for ruler_interval in ruler_intervals:
             for literal in ruler_intervals_literals[ruler_interval]:
-                if isinstance(literal, Atom):
-                    if literal.get_entity() is None:
-                        if literal.get_predicate() not in guess_D:
-                            guess_D[literal.get_predicate()] = [ruler_interval]
-                        else:
-                            guess_D[literal.get_predicate()].append(ruler_interval)
-                    else:
-                        guess_D[literal.get_predicate()][literal.get_entity()].append(ruler_interval)
+                if isinstance(literal, Atom) or (isinstance(literal, Literal) and len(literal.operators) == 0):
+                    guess_D[literal.get_predicate()][literal.get_entity()].append(ruler_interval)
                 elif isinstance(literal, BinaryLiteral):
                     binary_literals.append(literal)
 
                 elif isinstance(literal, Literal):
                     if literal.operators[0].name == "Boxplus":
-                        interval = Interval.add(ruler_interval, literal.operators[0].interval)
-                        if literal.get_entity() is None:
-                            if literal.get_predicate() not in guess_D:
-                                guess_D[literal.get_predicate()] = [interval]
-                            else:
-                                guess_D[literal.get_predicate()].append(interval)
+                        try:
+                          interval = Interval.add(ruler_interval, literal.operators[0].interval)
+                        except:
+                           print("debug")
+
+                        if literal.get_predicate() not in guess_D:
+                            guess_D[literal.get_predicate()][literal.get_entity()] = [interval]
                         else:
-                            if literal.get_predicate() not in guess_D:
-                                guess_D[literal.get_predicate()][literal.get_entity()] = [interval]
-                            else:
-                                guess_D[literal.get_predicate()][literal.get_entity()].append(interval)
+                            guess_D[literal.get_predicate()][literal.get_entity()].append(interval)
 
                     elif literal.operators[0].name == "Boxminus":
                         interval = Interval.sub(ruler_interval, literal.operators[0].interval)
-                        if literal.get_entity() is None:
-                            if literal.get_predicate() not in guess_D:
-                                guess_D[literal.get_predicate()] = [interval]
-                            else:
-                                guess_D[literal.get_predicate()].append(interval)
+                        if literal.get_predicate() not in guess_D:
+                            guess_D[literal.get_predicate()][literal.get_entity()] = [interval]
                         else:
-                            if literal.get_predicate() not in guess_D:
-                                guess_D[literal.get_predicate()][literal.get_entity()] = [interval]
-                            else:
-                                guess_D[literal.get_predicate()][literal.get_entity()].append(interval)
+                            guess_D[literal.get_predicate()][literal.get_entity()].append(interval)
 
                 else:
                     raise Exception("Please convert Diamondminus or Diamondplus to Boxminus or Boxplus")
-
 
         if len(binary_literals) != 0:
             guess_points, left_right_literals = generate_guess_points(w, binary_literals, ruler_intervals, self.z, self.gcd)
             # guess existing intervals
             for literal in left_right_literals:
                 if literal.get_predicate() in self.D and literal.get_entity() is None:
-                    guess_D[literal.get_predicate()] = D[literal.get_predicate()]
+                    guess_D[literal.get_predicate()] = self.D[literal.get_predicate()]
                 elif literal.get_predicate() in self.D and literal.get_entity() in self.D[literal.get_predicate()]:
                     guess_D[literal.get_predicate()][literal.get_entity()] = self.D[literal.get_predicate()][literal.get_entity()]
                 else:
                     # guess an interval from guess_points
                     pass
 
-        guess_D = coalescing_d(guess_D)
+        coalescing_d(guess_D)
         for literal in self.p_literals:
+            if guess_D is None:
+                continue
             T = apply(literal, guess_D)
             if len(T) == 0:
                 for ruler_interval in ruler_intervals:
@@ -487,6 +723,7 @@ class BuchiAutomata:
 
         prgram_flag = check_satisfy_program(w, program=self.program)
         return prgram_flag
+
 
 
 

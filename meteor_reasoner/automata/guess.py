@@ -29,8 +29,11 @@ def generate_guess_points(w, binary_literals, ruler_intervals, z, gcd):
                     left_len_list.appendleft(str(next_len))
                     left_z -= next_len
                     break
-
-            del left_len_list[-1]
+            try:
+                del left_len_list[-1]
+            except:
+                left_z = 0
+                break
 
     while right_z > 0:
         last_endpoint = ruler_intervals[-1].right_value
@@ -44,8 +47,12 @@ def generate_guess_points(w, binary_literals, ruler_intervals, z, gcd):
                     right_len_list.appendleft(str(next_len))
                     right_z -= next_len
                     break
+            try:
+                del right_len_list[0]
+            except:
+                 right_z = 0
+                 break
 
-            del right_len_list[0]
 
     to_guess_points = sorted(list(to_guess_points))
     the_left_most_z = to_guess_points[0]

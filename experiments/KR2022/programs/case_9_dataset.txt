@@ -1,0 +1,9 @@
+Infected(adam)@0
+Vaccinated(adam)@162
+NoSymptoms(adam)@[100,185]
+Infected(betty)@0
+Vaccinated(betty)@163
+NoSymptoms(betty)@[100,185]
+Infected(charlie)@-1
+Vaccinated(charlie)@162
+NoSymptoms(charlie)@[100,185]

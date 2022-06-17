@@ -1,0 +1,5 @@
+a1:ResearchAssistantCandidate(X):-Boxminus[0,5]a1:UndergraduateStudent(X)
+a1:ResearchAssistantCandidate(X):-Diamondminus[0,2]a1:GraduateStudent(X)
+a1:ResearchAssistantCandidate(X):-Boxplus[0,2]a1:TeachingAssistant(X)
+a1:ResearchAssistant(X):- Boxminus[0,5]a1:ResearchAssistantCandidate(X)
+a1:ResearchAssistant(X):- a1:publicationAuthor(Y,X),Boxminus[0,1]a1:ResearchAssistantCandidate(X)

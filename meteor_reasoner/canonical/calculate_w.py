@@ -3,7 +3,7 @@ from meteor_reasoner.classes.atom import *
 from meteor_reasoner.classes.interval import *
 from meteor_reasoner.classes.rule import Rule
 import copy
-
+from decimal import Decimal
 
 def strengthening_transformation(literal):
     new_operators = []
@@ -14,10 +14,10 @@ def strengthening_transformation(literal):
         else:
             operator.name = "Diamondplus"
 
-        if isinstance(literal.right_atom, Atom):
-             literal = Literal(literal.right_atom, [operator])
+        if isinstance(literal.right_literal, Atom):
+             literal = Literal(literal.right_literal, [operator])
         else:
-            literal = literal.right_atom
+            literal = literal.right_literal
             literal.operators.insert(0, operator)
 
     if isinstance(literal, Atom):
@@ -60,20 +60,24 @@ def get_w(rules):
         if not isinstance(head, Atom):
             for operator in head.operators:
                 if operator.name == "Boxminus":
-                    w_interval = Interval.circle_sub(operator.interval, w_interval)
+                    # need to be imporved
+                    if operator.interval.right_value !=  Decimal("inf"):
+                        w_interval = Interval.circle_sub(operator.interval, w_interval)
                 else:
-                    w_interval = Interval.add(operator.interval, w_interval)
+                    if operator.interval.right_value != Decimal("inf"):
+                         w_interval = Interval.add(operator.interval, w_interval)
 
         for literal in rule.body:
             tmp_w_interval = copy.deepcopy(w_interval)
             if not isinstance(literal, Atom):
                 for operator in literal.operators:
                     if operator.name == "Diamondminus":
-                        tmp_w_interval = Interval.add(operator.interval, tmp_w_interval)
+                        if operator.interval.right_value !=  Decimal("inf"):
+                              tmp_w_interval = Interval.add(operator.interval, tmp_w_interval)
                     else:
-                        tmp_w_interval = Interval.circle_sub(operator.interval, tmp_w_interval)
+                        if operator.interval.right_value != Decimal("inf"):
+                              tmp_w_interval = Interval.circle_sub(operator.interval, tmp_w_interval)
             max_w = max(abs(tmp_w_interval.right_value), max_w)
-
     return max_w
 
 
