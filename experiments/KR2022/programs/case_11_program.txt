@@ -1,2 +1,0 @@
-ALWAYS[0,1] Alive(X) :-  Alive(X)
-Immortal(X) :- ALWAYS[0,+inf) Alive(X)

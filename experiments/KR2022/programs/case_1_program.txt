@@ -1,3 +1,0 @@
-R(X,Y):- Diamondminus[1,1]R(X,Y)
-Q(Y):- P(X), R(X,Y)
-P(X):- Diamondminus[1,1]Q(X)
