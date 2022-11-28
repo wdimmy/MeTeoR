@@ -1,0 +1,3 @@
+Overheat(X) :- ALWAYS[-10,0] HighTemperature(X)
+Overheat(X) :- ALWAYS[-20,0] SOMETIME[-5.5,0] HighTemperature(X)
+Alert :- Overheat(X), Overheat(Y), SameLocation(X,Y)

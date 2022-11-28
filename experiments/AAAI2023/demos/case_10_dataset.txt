@@ -1,0 +1,7 @@
+HighTemperature(sensor1)@[0,27.5]
+HighTemperature(sensor2)@3.5
+HighTemperature(sensor2)@5.1
+HighTemperature(sensor2)@10
+HighTemperature(sensor2)@14.7
+HighTemperature(sensor2)@20
+SameLocation(sensor1,sensor2)@(-inf,+inf)

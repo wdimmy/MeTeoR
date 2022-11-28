@@ -1,0 +1,7 @@
+RedList(adam)@[0,20]
+HighRisk(david)@(-inf,+inf)
+HighRisk(ernesto)@(-inf,+inf)
+Transaction(adam,betty)@2.87
+Transaction(betty,charlie)@12.15
+Transaction(charlie,david)@17.5
+Transaction(charlie,ernesto)@129.43

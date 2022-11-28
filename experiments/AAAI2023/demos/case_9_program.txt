@@ -1,0 +1,3 @@
+Immune(X) :- NoSymptoms(X) UNTIL[-28,-21] Vaccinated(X)
+Immune(X) :- SOMETIME[-183,-10) Infected(X), ALWAYS[-10,0]NoSymptoms(X)
+NegativeTest(X) :- ALWAYS[-5,0] Immune(X)

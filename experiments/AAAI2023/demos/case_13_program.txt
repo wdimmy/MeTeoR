@@ -1,0 +1,3 @@
+ALWAYS[2] Backup(X) :- Backup(X)
+Backup(X) :- Dependent(X,Y), Backup(Y)
+ALWAYS[0,+inf) Dependent(X,Y) :- Dependent(X,Y)
