@@ -1,20 +1,13 @@
 from meteor_reasoner.graphutil.graph_strengthening import *
 from meteor_reasoner.graphutil.multigraph import *
 from meteor_reasoner.classes import *
-import copy
+from meteor_reasoner.utils.loader import load_program
 
 
 def test_finite_materialisability():
-    head = Atom("C", tuple([Term("nan")]))
-    literal_a = Literal(Atom("A", tuple([Term("X", "variable")])), [Operator("Boxminus", Interval(1, 2, False, False)),
-                                                                    Operator("Boxminus", Interval(1, 2, False, False))])
-    literal_b = Literal(Atom("B", tuple([Term("nan")])), [Operator("Diamondminus", Interval(0, 1, False, False))])
-    literal_c = BinaryLiteral(copy.deepcopy(literal_a), copy.deepcopy(literal_b),
-                              Operator("Until", Interval(4, 5, False, False)))
 
-    body = [literal_a, literal_b, literal_c]
-    rule = Rule(head, body)
-    rules = transformation([rule])
+    rules = load_program(["A(X):-Boxplus[4]C(X)", "Boxplus[5]C(X):- A(X)"])
+    rules = transformation(rules)
     print(rules[0])
     paris = construct_pair(rules)
     G = TemporalDependencyGraph()

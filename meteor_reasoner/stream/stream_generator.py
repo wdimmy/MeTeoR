@@ -14,7 +14,6 @@ class Stream_Generator:
                             self.streams_data[time_point].append(Atom(predicate, entity))
                             break
 
-
     def generator(self, delay=0.001):
         for t in self.time_points:
             yield self.streams_data[t], t

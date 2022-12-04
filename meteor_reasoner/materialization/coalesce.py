@@ -29,15 +29,7 @@ def coalescing_d(D):
     Returns:
     """
     for predicate in D:
-        if type(D[predicate]) == list:
-            old_intervals = D[predicate]
-            if len(old_intervals) == 0:
-                continue
-            new_intervals = coalescing(old_intervals)
-            D[predicate] = new_intervals
-
-        else:
-            for entity, old_intervals in D[predicate].items():
+        for entity, old_intervals in D[predicate].items():
                 old_intervals = D[predicate][entity]
                 if len(old_intervals) == 0:
                     continue

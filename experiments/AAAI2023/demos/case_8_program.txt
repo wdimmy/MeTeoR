@@ -1,1 +1,0 @@
-A(X):-Diamondminus[3,4]A(X)

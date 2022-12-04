@@ -12,12 +12,19 @@ def no_new_facts(delta_new, D, limit):
                     for interval in diff_interval_list:
                         new_interval = Interval.intersection(limit, interval)
                         if new_interval is not None:
-                            return False
+                            #  print("diff:", [str(item) for item  in diff_interval_list])
+                            #  print("D:", [str(item) for item  in D[predicate][entity]])
+                            #  print("new:", [str(item) for item  in delta_new[predicate][entity]])
+                            #  print(predicate, [item.name for item in entity], str(interval))
+                             return False
             else:
                 for interval in delta_new[predicate][entity]:
                     new_interval = Interval.intersection(limit, interval)
                     if new_interval is not None:
-                       return False
+                        #  print("D:", [str(item) for item  in D[predicate][entity]])
+                        #  print("new:", [str(item) for item  in delta_new[predicate][entity]])
+                        #  print(predicate, [item.name for item in entity], str(interval))
+                         return False
     return True
 
 
@@ -29,10 +36,10 @@ def literal_contain_no_variable(literal):
         if isinstance(literal, Literal) and len(literal.atom.entity) == 1 and literal.atom.entity[0].name == "nan":
             return True
     elif isinstance(literal, BinaryLiteral):
-        if literal.left_atom.get_predicate() in ["Bottom", "Top"] or (
-                len(literal.left_atom.entity) == 1 and literal.left_atom.entity[0].name == "nan"):
-            if literal.right_atom.get_predicate() in ["Bottom", "Top"] or (
-                    len(literal.right_atom.entity) == 1 and literal.right_atom.entity[0].name == "nan"):
+        if literal.left_literal.get_predicate() in ["Bottom", "Top"] or (
+                len(literal.left_literal.entity) == 1 and literal.left_literal.entity[0].name == "nan"):
+            if literal.right_literal.get_predicate() in ["Bottom", "Top"] or (
+                    len(literal.right_literal.entity) == 1 and literal.right_literal.entity[0].name == "nan"):
                 return True
 
 
@@ -62,10 +69,10 @@ def split_rules_predicates(program):
         involved_predicates.add(rule.head.get_predicate())
         for literal in rule.body:
             if isinstance(literal, BinaryLiteral):
-                if literal.left_atom.get_predicate() not in ["Bottom", "Top"]:
-                    involved_predicates.add(literal.left_atom.get_predicate())
-                if literal.right_atom.get_predicate() not in ["Bottom", "Top"]:
-                    involved_predicates.add(literal.right_atom.get_predicate())
+                if literal.left_literal.get_predicate() not in ["Bottom", "Top"]:
+                    involved_predicates.add(literal.left_literal.get_predicate())
+                if literal.right_literal.get_predicate() not in ["Bottom", "Top"]:
+                    involved_predicates.add(literal.right_literal.get_predicate())
             else:
                 if literal.get_predicate() not in ["Bottom", "Top"]:
                     involved_predicates.add(literal.get_predicate())
@@ -75,11 +82,11 @@ def split_rules_predicates(program):
         involved_predicates.add(rule.head.get_predicate())
         for literal in rule.body:
             if isinstance(literal, BinaryLiteral):
-                if literal.left_atom.get_predicate() not in ["Bottom", "Top"]:
-                    involved_predicates.add(literal.left_atom.get_predicate())
+                if literal.left_literal.get_predicate() not in ["Bottom", "Top"]:
+                    involved_predicates.add(literal.left_literal.get_predicate())
                     automata_predicates.add(rule.head.get_predicate())
-                if literal.right_atom.get_predicate() not in ["Bottom", "Top"]:
-                    involved_predicates.add(literal.right_atom.get_predicate())
+                if literal.right_literal.get_predicate() not in ["Bottom", "Top"]:
+                    involved_predicates.add(literal.right_literal.get_predicate())
                     automata_predicates.add(rule.head.get_predicate())
             else:
                 if literal.get_predicate() not in ["Bottom", "Top"]:
@@ -105,9 +112,11 @@ def entail_same_nonrecursive_predicates(D, delta_new, non_predicates):
 
 def pre_calculate_threshold(rules, propagation, D, D_index, non_predicates):
     observed_rules = defaultdict(list)
+    deleted_rules = set()
     if propagation == 1:
         for rule in rules:
             min_right = float("inf")
+            contain_nrpredicate_flag = False
             for tmp_literal in rule.body:
                 literal = copy.deepcopy(tmp_literal)
                 intervals = []
@@ -122,6 +131,7 @@ def pre_calculate_threshold(rules, propagation, D, D_index, non_predicates):
                             literal.set_entity([tmp_entity])
                             tmp_interval_list = apply(literal, D)
                             intervals = intervals + tmp_interval_list
+                        contain_nrpredicate_flag = True 
 
                     elif right_predicate in ["Bottom", "Top"]:
                         if left_predicate not in non_predicates:
@@ -130,6 +140,7 @@ def pre_calculate_threshold(rules, propagation, D, D_index, non_predicates):
                             literal.set_entity([tmp_entity])
                             tmp_interval_list = apply(literal, D)
                             intervals = intervals + tmp_interval_list
+                        contain_nrpredicate_flag = True 
                     else:
                         if left_predicate not in non_predicates or right_predicate not in non_predicates:
                             continue
@@ -138,6 +149,7 @@ def pre_calculate_threshold(rules, propagation, D, D_index, non_predicates):
                                 literal.set_entity([left_entity, right_entity])
                                 tmp_interval_list = apply(literal, D)
                                 intervals = intervals + tmp_interval_list
+                        contain_nrpredicate_flag = True 
                 else:
                     if literal.get_predicate() not in non_predicates:
                         continue
@@ -145,13 +157,14 @@ def pre_calculate_threshold(rules, propagation, D, D_index, non_predicates):
                         literal.set_entity(tmp_entity)
                         tmp_interval_list = apply(literal, D)
                         intervals = intervals + tmp_interval_list
+                    contain_nrpredicate_flag = True 
 
                 if len(intervals) != 0:
                     tmp_max_right = max([item.right_value for item in intervals])
                     min_right = min(tmp_max_right, min_right)
-                else:
-                    rules.remove(rule)
-                    break
+                
+                elif len(intervals) == 0 and contain_nrpredicate_flag:
+                    deleted_rules.add(rule)
 
             if min_right != float("inf"):
                 observed_rules[min_right].append(rule)
@@ -160,6 +173,7 @@ def pre_calculate_threshold(rules, propagation, D, D_index, non_predicates):
     elif propagation == 2:
         for rule in rules:
             max_left = float("-inf")
+            contain_nrpredicate_flag = False 
             for literal in rule.body:
                 intervals = []
                 if isinstance(literal, BinaryLiteral):
@@ -173,6 +187,7 @@ def pre_calculate_threshold(rules, propagation, D, D_index, non_predicates):
                             literal.set_entity([tmp_entity])
                             tmp_interval_list = apply(literal, D)
                             intervals = intervals + tmp_interval_list
+                        contain_nrpredicate_flag = True 
 
                     elif right_predicate in ["Bottom", "Top"]:
                         if left_predicate not in non_predicates:
@@ -181,6 +196,8 @@ def pre_calculate_threshold(rules, propagation, D, D_index, non_predicates):
                             literal.set_entity([tmp_entity])
                             tmp_interval_list = apply(literal, D)
                             intervals = intervals + tmp_interval_list
+                        contain_nrpredicate_flag = True 
+
                     else:
                         if left_predicate not in non_predicates or right_predicate not in non_predicates:
                             continue
@@ -189,22 +206,29 @@ def pre_calculate_threshold(rules, propagation, D, D_index, non_predicates):
                                 literal.set_entity([left_entity, right_entity])
                                 tmp_interval_list = apply(literal, D)
                                 intervals = intervals + tmp_interval_list
+                        contain_nrpredicate_flag = True 
                 else:
                     for tmp_entity, tmp_context in ground_generator(literal, dict(), D, D_index):
                         literal.set_entity([tmp_entity])
                         tmp_interval_list = apply(literal, D)
                         intervals = intervals + tmp_interval_list
+                    contain_nrpredicate_flag = True 
 
                 if len(intervals) != 0:
                     tmp_min_left = min([item.left_value for item in intervals])
                     min_right = max(tmp_min_left, max_left)
-                else:
-                    rules.remove(rule)
-                    break
+                
+                elif len(intervals) == 0 and contain_nrpredicate_flag:
+                   deleted_rules.add(rule)
+                   break
 
             if max_left != float("-inf"):
                 observed_rules[max_left].append(rule)
 
     observed_rules = sorted(observed_rules.items(), key=lambda item: item[0])
+    for rule in deleted_rules:
+        # delete the useless rule because one of its non-recursive body atom could not be grounded
+        rules.remove(rule)
+
     return observed_rules
 

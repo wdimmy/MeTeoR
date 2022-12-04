@@ -5,6 +5,7 @@ from meteor_reasoner.classes.rule import Rule
 import copy
 from decimal import Decimal
 
+
 def strengthening_transformation(literal):
     new_operators = []
     if isinstance(literal, BinaryLiteral):

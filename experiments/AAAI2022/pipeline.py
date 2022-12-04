@@ -7,7 +7,7 @@ import argparse
 import json
 from meteor_reasoner.utils.entail_check import entail
 parser = argparse.ArgumentParser()
-parser.add_argument("--datapath",  required=True, type=str, help="Input the dataset path")
+parser.add_argument("--datapath",  default="data/lubm.json", required=True, type=str, help="Input the dataset path")
 parser.add_argument("--rulepath", required=True, type=str, help="Input the program path")
 parser.add_argument("--fact", default="a1:ResearchAssistant(http://www.department0.university0.edu/graduatestudent117)@[4,8]",  type=str, help="Input a fact  you wanna check the entailment")
 

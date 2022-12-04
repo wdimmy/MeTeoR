@@ -77,6 +77,7 @@ def seminaive_join(rule, D,  delta_old, delta_new, D_index=None, must_literals=N
                             replaced_head_entity.append(new_term)
                 replaced_head_entity = tuple(replaced_head_entity)
             else:
+
                 replaced_head_entity = head_entity
 
             if len(T) == len(literals):

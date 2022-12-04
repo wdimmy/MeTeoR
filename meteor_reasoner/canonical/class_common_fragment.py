@@ -1,7 +1,3 @@
-from decimal import Decimal
-from meteor_reasoner.classes.interval import Interval
-
-
 class CommonFragment:
     def __init__(self, base_interval, cr_flag=True):
         """
