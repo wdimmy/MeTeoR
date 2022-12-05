@@ -9,6 +9,9 @@ sys.path.insert(0, path.join(here, 'meteor_reasoner'))
 #
 # print('version')
 # print(__version__)
+# commands for uploading to pypi
+# python setup.py sdist bdist_wheel
+# twine upload dist/*
 
 # Get the long description from the README file
 with open(path.join(here, 'README.md'), encoding='utf-8') as f:
