@@ -32,9 +32,9 @@ from meteor_reasoner.utils.loader import load_dataset, load_program
 #     "R6(Y):-R5(Y), Boxminus[0,2]R4(Y),R1(X,Y)"
 # ]
 
-with open("/experiments/AAAI2023/programs/case_10_dataset.txt") as file:
+with open("./data/case_0_dataset.txt") as file:
     data = file.readlines()
-with open("/experiments/AAAI2023/programs/case_10_program.txt") as file:
+with open("./data/case_0_program.txt") as file:
     program = file.readlines()
 
 D = load_dataset(data)
@@ -49,18 +49,20 @@ for i in range(1,10):
     delta_new = naive_immediate_consequence_operator(rules, D, D_index)
     print_dataset(delta_new)
     print("After D:")
-    materialize(D, rules, D_index=D_index, delta_old=D, K=1)
+    materialize(D, rules, K=1)
     print_dataset(D)
 
 
-D= ["R1(c1,c2)@[0,1]", "R2(c1,c2)@[1,2]", "R3(c2,c3)@[2,3]", "R5(c2)@[0,1]"]
-Program = [
-    "R1(X,Y):- Diamondminus[1,1]R1(X,Y)",
-    "Boxplus[1,1]R5(Y):- R2(X,Y),Boxplus[1,2]R3(Y,Z)",
-    "R4(X):- Diamondminus[0,1]R5(X)",
-    "R6(Y):-R5(Y), Boxminus[0,2]R4(Y),R1(X,Y)"
-]
+# D= ["R1(c1,c2)@[0,1]", "R2(c1,c2)@[1,2]", "R3(c2,c3)@[2,3]", "R5(c2)@[0,1]"]
+# Program = [
+#     "R1(X,Y):- Diamondminus[1,1]R1(X,Y)",
+#     "Boxplus[1,1]R5(Y):- R2(X,Y),Boxplus[1,2]R3(Y,Z)",
+#     "R4(X):- Diamondminus[0,1]R5(X)",
+#     "R6(Y):-R5(Y), Boxminus[0,2]R4(Y),R1(X,Y)"
+# ]
 
+D = ["R1(c1,c2)@[0,1]"]
+Program = ["R1(X,Y):- Diamondminus[1,1]R1(X,Y)"]
 D = load_dataset(D)
 D_index = build_index(D)
 rules = load_program(Program)
@@ -70,10 +72,10 @@ for i in range(1,4):
     print("Before D:")
     print_dataset(D)
     print("Derived facts:")
-    delta_new = seminaive_immediate_consequence_operator(rules, D, D_index)
+    delta_new = seminaive_immediate_consequence_operator(rules, D, D_index, delta_old=D)
     print_dataset(delta_new)
     print("After D:")
-    materialize(D, rules, D_index=D_index, delta_old=D, seminaive=True, K=1)
+    materialize(D, rules, K=1)
     print_dataset(D)
 
 

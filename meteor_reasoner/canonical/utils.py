@@ -141,7 +141,9 @@ def find_left_period(D, left_interval_range, CR):
         first = big_ruler_intervals[i]
         try:
             second_index = big_ruler_intervals.index(Interval(first.left_value - CR.w, first.left_value - CR.w, False, False))
+
         except:
+
             break
 
         first_interval = big_ruler_intervals[second_index: i+1]
@@ -178,7 +180,7 @@ def build_right_ruler_intervals(right_interval_range, CR):
     big_ruler_intervals = CR.right_initial_ruler_intervals[:]
     i = 0
     next_point = (big_ruler_intervals[-1].right_value, big_ruler_intervals[-1].right_value + CR.pattern_len[i % CR.pattern_num])
-    while next_point[1] <= right_interval_range.right_value:
+    while next_point[1] < right_interval_range.right_value:
         big_ruler_intervals.append(Interval(next_point[0], next_point[1], True, True))
         big_ruler_intervals.append(Interval(next_point[1], next_point[1], False, False))
         i += 1
@@ -190,7 +192,7 @@ def build_left_ruler_intervals(left_interval_range, CR):
     big_ruler_intervals = CR.left_initial_ruler_intervals[:]
     i = 0
     next_point = (big_ruler_intervals[0].left_value, big_ruler_intervals[0].left_value - CR.pattern_len[::-1][i % CR.pattern_num])
-    while next_point[1] >= left_interval_range.right_value:
+    while next_point[1] > left_interval_range.left_value:
         big_ruler_intervals = [Interval(next_point[1], next_point[0], True,  True)] + big_ruler_intervals
         big_ruler_intervals = [Interval(next_point[1], next_point[1], False, False)] + big_ruler_intervals
         i += 1

@@ -16,4 +16,3 @@ def test_rule():
     rule = parse_rule(raw_rule)
     print(str(rule))
     assert raw_rule == str(rule)
-

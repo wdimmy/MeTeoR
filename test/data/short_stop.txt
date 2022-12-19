@@ -1,0 +1,5 @@
+NotPos(V):-NotOnMap(V)
+ShortStop(V):-NotPos(V), Boxminus[1,1]Pos(V), Boxminus[2,2]NotPos(V)
+ShortStop(V):-NotPos(V), Boxminus[1,1]Pos(V), Boxminus[2,2]Pos(V), Boxminus[3,3]NotPos(V)
+ShortStop(V):-NotPos(V), Boxminus[1,1]Pos(V), Boxminus[2,2]Pos(V), Boxminus[3,3]Pos(V), Boxminus[4,4]NotPos(V)
+ShortStop(V):-NotPos(V), Boxminus[1,1]Pos(V), Boxminus[2,2]Pos(V), Boxminus[3,3]Pos(V), Boxminus[4,4]Pos(V), Boxminus[5,5]NotPos(V)

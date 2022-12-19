@@ -5,6 +5,7 @@ from meteor_reasoner.utils.propagation import check_propagation
 from meteor_reasoner.graphutil.temporal_dependency_graph import CycleFinder
 import time
 from meteor_reasoner.materialization.utils import no_new_facts, pre_calculate_threshold, entail_same_nonrecursive_predicates
+from meteor_reasoner.utils.operate_dataset import save_dataset_to_file
 
 
 def calculate_redundancy(delta, old):
@@ -93,7 +94,7 @@ def naive_combine(D, delta_new, D_index=None):
     return fixpoint
 
 
-def materialize(D, rules, mode="seminaive", K=1):
+def materialize(D, rules, mode="seminaive", K=100, logger=None, must_literals=None, metrics=None):
     """
     The function implements the materialization operation.
     Args:
@@ -107,16 +108,18 @@ def materialize(D, rules, mode="seminaive", K=1):
     delta_old = D
     if mode == "opt":
         return opt_materialize(D, rules, delta_old=delta_old, D_index=D_index, K=K)
-
     elif mode == "seminaive":
         seminaive = True
-
     else:
         seminaive = False
 
     k = 0
+    if logger is not None:
+        start_time = time.time()
+        calc_time = 0.0
+
     while k < K:
-        #print("Iteration:", k)
+        print("Iteration:", k)
         k += 1
         if seminaive:
             delta_new = seminaive_immediate_consequence_operator(rules, D, D_index, delta_old=delta_old)
@@ -126,8 +129,29 @@ def materialize(D, rules, mode="seminaive", K=1):
         if seminaive:
             delta_old = defaultdict(lambda: defaultdict(list))
             fixpoint = seminaive_combine(D, delta_new, delta_old, D_index)
+            if logger is not None:
+                tmp_start_time = time.time()
+                coalescing_d(delta_new)
+                number_of_redundant_facts = calculate_redundancy(delta_new, delta_old)
+                total_number = 0
+                for predicate in D:
+                    for entity in D[predicate]:
+                        total_number += len(D[predicate][entity])
+                calc_time += time.time() - tmp_start_time
+                logger.info("Iteration={}, t={}, D={}, n={}".format(k, time.time() - start_time - calc_time, total_number, number_of_redundant_facts))
         else:
-            fixpoint = naive_combine(D, delta_new, D_index)
+            if logger is not None:
+                delta_old = defaultdict(lambda: defaultdict(list))
+                fixpoint = seminaive_combine(D, delta_new, delta_old, D_index)
+                coalescing_d(delta_new)
+                number_of_redundant_facts = calculate_redundancy(delta_new, delta_old)
+                total_number = 0
+                for predicate in D:
+                    for entity in D[predicate]:
+                        total_number += len(D[predicate][entity])
+                logger.info("Iteration={}, t={}, D={}, n={}".format(k, time.time() - start_time - calc_time, total_number, number_of_redundant_facts))
+            else:
+                fixpoint = naive_combine(D, delta_new, D_index)
 
         if fixpoint:
             return True
@@ -135,7 +159,7 @@ def materialize(D, rules, mode="seminaive", K=1):
     return False
 
 
-def opt_materialize(D, rules, D_index, delta_old, K=1):
+def opt_materialize(D, rules, D_index, delta_old, K=1, logger=None):
     CF = CycleFinder(program=rules)
     non_predicates = CF.get_non_recursive_predicates()
     nr_program = list()
@@ -156,7 +180,12 @@ def opt_materialize(D, rules, D_index, delta_old, K=1):
              nr_program.append(rule)
     flag = 0
     k = 0
+    if logger is not None:
+        start_time = time.time()
+        calc_time = 0.0
+
     while k < K:
+        print("Iteration:", k)
         k += 1
         delta_new = seminaive_immediate_consequence_operator(rules, D, D_index, delta_old=delta_old)
         if flag == 0:
@@ -198,9 +227,25 @@ def opt_materialize(D, rules, D_index, delta_old, K=1):
                         break
                 else:
                     observed_rules = observed_rules[i + 1:]
+        #print("len of rules:", len(rules))
+        # if len(rules) < 15:
+        #    for rule in rules:
+        #         print(rule)
         delta_old = defaultdict(lambda: defaultdict(list))
         fixpoint = seminaive_combine(D, delta_new, delta_old, D_index)
+        if logger is not None:
+            tmp_start_time = time.time()
+            coalescing_d(delta_new)
+            number_of_redundant_facts = calculate_redundancy(delta_new, delta_old)
+            total_number = 0
+            for predicate in D:
+                for entity in D[predicate]:
+                    total_number += len(D[predicate][entity])
+            calc_time += time.time() - tmp_start_time
+            logger.info("Iteration={}, t={}, D={}, n={}".format(k, time.time() - start_time - calc_time,
+                                                                total_number, number_of_redundant_facts))
         if fixpoint:
+            save_dataset_to_file("recursive_dataset.txt", D)
             return True
 
     return False

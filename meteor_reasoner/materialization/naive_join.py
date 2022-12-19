@@ -7,7 +7,7 @@ from meteor_reasoner.utils.operate_dataset import print_dataset
 from meteor_reasoner.materialization.coalesce import coalescing_d
 
 
-def naive_join(rule, D, delta_new, D_index=None):
+def naive_join(rule, D, delta_new, D_index=None, must_literals=None):
     """
     This function implement the join operator when variables exist in the body of the rule.
     Args:
@@ -38,6 +38,8 @@ def naive_join(rule, D, delta_new, D_index=None):
                     break
                 else:
                     T.append(t)
+                    if must_literals is not None:
+                        must_literals[grounded_literal] += t
             n_T = []
             for i in range(len(rule.body), len(literals)):
                 grounded_literal = copy.deepcopy(literals[i])
@@ -52,25 +54,32 @@ def naive_join(rule, D, delta_new, D_index=None):
                     break
                 else:
                     n_T.append(t)
+                    if must_literals is not None:
+                        must_literals[grounded_literal] += t
+
             if len(n_T) > 0 and len(n_T) == len(rule.negative_body_atoms):
                 n_T = interval_merge(T)
             else:
                 n_T = []
-            if len(head_entity) > 1 or head_entity[0].name != "nan":
-                replaced_head_entity = []
-                for term in head_entity:
-                    if term.type == "constant":
-                        replaced_head_entity.append(term)
-                    else:
-                        if term.name not in context:
-                            raise ValueError("Head variables in Rule({}) do not appear in the body".format(str(rule)))
-                        else:
-                            new_term = Term.new_term(context[term.name])
-                            replaced_head_entity.append(new_term)
 
-                replaced_head_entity = tuple(replaced_head_entity)
-            else:
-                replaced_head_entity = head_entity
+            try:
+                if len(head_entity) > 1 or head_entity[0].name != "nan":
+                    replaced_head_entity = []
+                    for term in head_entity:
+                        if term.type == "constant":
+                            replaced_head_entity.append(term)
+                        else:
+                            if term.name not in context:
+                                raise ValueError("Head variables in Rule({}) do not appear in the body".format(str(rule)))
+                            else:
+                                new_term = Term.new_term(context[term.name])
+                                replaced_head_entity.append(new_term)
+
+                    replaced_head_entity = tuple(replaced_head_entity)
+                else:
+                    replaced_head_entity = head_entity
+            except:
+                print("hello")
 
             if len(T) == len(literals):
                 T = interval_merge(T)
@@ -85,8 +94,14 @@ def naive_join(rule, D, delta_new, D_index=None):
                         tmp_D[head_predicate][replaced_head_entity] = T
                         tmp_head = copy.deepcopy(rule.head)
                         tmp_head.set_entity(replaced_head_entity)
+
+                        if must_literals is not None:
+                            must_literals[tmp_head] += T
                         T = reverse_apply(tmp_head, tmp_D)
                     delta_new[head_predicate][replaced_head_entity] += T
+                    if must_literals is not None:
+                        must_literals[Atom(head_predicate, replaced_head_entity)] += T
+
         else:
             current_literal = copy.deepcopy(literals[global_literal_index])
             if not isinstance(current_literal, BinaryLiteral):

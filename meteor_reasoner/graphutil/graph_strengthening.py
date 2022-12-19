@@ -13,10 +13,10 @@ def strengthening_transformation(literal):
         else:
             operator.name = "Diamondplus"
 
-        if isinstance(literal.right_atom, Atom):
-             literal = Literal(literal.right_atom, [operator])
+        if isinstance(literal.right_literal, Atom):
+             literal = Literal(literal.right_literal, [operator])
         else:
-            literal = literal.right_atom
+            literal = literal.right_literal
             literal.operators.insert(0, operator)
 
     if isinstance(literal, Atom):

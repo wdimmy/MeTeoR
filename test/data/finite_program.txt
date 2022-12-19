@@ -1,0 +1,4 @@
+Susc(X):- Boxminus[0,365]NotVacc(X), Boxminus[0,183]NotInf(X)
+GetsInf(X):- ContInf(X,Y)Since[1,1]NoMask(X), Susc(X)
+FirstSympt(X):-Boxminus[5,5]GetsInf(X),Over65(X)
+Boxminus[5,5]GetsInf(X):-FirstSympt(X)

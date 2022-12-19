@@ -160,7 +160,7 @@ def get_initial_ruler_intervals(points, left_border, right_border, gcd):
         if b == 0:
             continue
         else:
-            pattern.add(b)
+            pattern.add(item-gcd * (a+1))
 
     pattern = list(pattern)
     pattern.sort()
@@ -183,11 +183,11 @@ def get_initial_ruler_intervals(points, left_border, right_border, gcd):
     pattern.add(right_end_point)
     # the pattern's range [x, x+gcd], all other points will fall into this range
     for item in points:
-        a, b = divmod(item - left_end_point, gcd)
+        a, b = divmod(right_end_point - item, gcd)
         if b == 0:
             continue
         else:
-            pattern.add(b)
+            pattern.add(item + gcd * a)
 
     pattern = list(pattern)
     pattern.sort()

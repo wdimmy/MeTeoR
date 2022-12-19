@@ -18,5 +18,3 @@ def test_apply():
     T = apply(literal, D)
     print([str(interval) for interval in T])
 
-
-
