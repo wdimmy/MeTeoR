@@ -7,9 +7,13 @@ from meteor_reasoner.materialization.coalesce import coalescing_d
 from meteor_reasoner.materialization.index_build import build_index
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--datapath", default="./data/case_0_dataset.txt", type=str)
-parser.add_argument("--rulepath", default="./data/case_0_program.txt", type=str)
-parser.add_argument("--fact",  default="P@100.5", type=str)
+# parser.add_argument("--datapath", default="./data/case_0_dataset.txt", type=str)
+# parser.add_argument("--rulepath", default="./data/case_0_program.txt", type=str)
+# parser.add_argument("--datapath", default="/Users/dimmy/Desktop/MeTeoR/experiments/AAAI2022/data/lubm.json", type=str)
+# parser.add_argument("--rulepath", default="/Users/dimmy/Desktop/MeTeoR/experiments/AAAI2022/programs/p.txt", type=str)
+parser.add_argument("--datapath", default="/Users/dimmy/Desktop/MeTeoR/test/data/lubm_magic_T3.json", type=str)
+parser.add_argument("--rulepath", default="/Users/dimmy/Desktop/MeTeoR/test/data/p_magic_T3.txt", type=str)
+parser.add_argument("--fact", type=str)
 args = parser.parse_args()
 
 
@@ -33,6 +37,7 @@ if __name__ == "__main__":
         fact = Atom(predicate, entity, interval)
     else:
         fact = None
+    
 
     CR = CanonicalRepresentation(D, program)
     CR.initilization()
