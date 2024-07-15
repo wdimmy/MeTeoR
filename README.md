@@ -152,7 +152,7 @@ from meteor_reasoner.datagenerator import generate_datalog
 owl_path = "owl_data" # input the dir_path where owl files locate
 out_dir = "./output" # input the path for the converted datalog triplets
 
-generate_datalog.extract_triplet(owl_path, out_dir)
+generate_datalog.extract_triplets(owl_path, out_dir)
 ```
 In **./output**, you should see a **./output/owl_data**  containing data
 in the form of
@@ -376,9 +376,9 @@ from meteor_reasoner.utils.parser import parse_str_fact
 from meteor_reasoner.classes.atom import Atom
 from meteor_reasoner.canonical.utils import fact_entailment
 fact = "A(a)@-20"
-predicate, entity, interval = parse_str_fact(args.fact)
+predicate, entity, interval = parse_str_fact(fact)
 F = Atom(predicate, entity, interval)
-print("Entailment:", fact_entailment(D1, fact, common, left_period, left_len, right_period, right_len))
+print("Entailment:", fact_entailment(D1, F, common, left_period, left_len, right_period, right_len))
 ```
 The fact is not entailed by the given dataset and the program, so "Entailment: False" will be printed out.
 
