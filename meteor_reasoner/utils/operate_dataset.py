@@ -44,7 +44,7 @@ def save_dataset_to_file(filename, D):
         for entity, intervals in D[predicate].items():
             for interval in intervals:
                 if len(entity) == 1 and entity[0].name == "nan":
-                    filewriter(predicate + "@" + str(interval)+"\n")
+                    filewriter.write(predicate + "@" + str(interval)+"\n")
                 else:
                     filewriter.write(predicate + "(" + ",".join([item.name for item in entity]) + ")@" + str(interval)+"\n")
 

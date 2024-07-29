@@ -152,7 +152,7 @@ from meteor_reasoner.datagenerator import generate_datalog
 owl_path = "owl_data" # input the dir_path where owl files locate
 out_dir = "./output" # input the path for the converted datalog triplets
 
-generate_datalog.extract_triplet(owl_path, out_dir)
+generate_datalog.extract_triplets(owl_path, out_dir)
 ```
 In **./output**, you should see a **./output/owl_data**  containing data
 in the form of
@@ -289,8 +289,13 @@ You can install MeTeoR using Python's package manager `pip`.
  - urllib3>=1.24.0
  - scikit-learn>=0.20.0
  - networkx
- - rdflib
+ - rdflib==4.2.2
  - outdated>=0.2.0
+
+You can install the required packages using the following command:
+```bash
+pip install "numpy==1.16.0" "pandas==0.24.0" "urllib3==1.24.0" "scikit-learn==0.20.0" "networkx==2.6.3" "rdflib==4.2.2" "outdated==0.2.0"
+```
 
 ##### Pip install
 The recommended way to install MeTeoR is using Python's package manager pip:
@@ -336,6 +341,7 @@ it reaches to the fixed point. The derived facts will be kept in D.
 ```python 
 from meteor_reasoner.canonical.utils import find_periods
 from meteor_reasoner.canonical.canonical_representation import CanonicalRepresentation
+from meteor_reasoner.utils.operate_dataset import print_dataset
 
 CR = CanonicalRepresentation(D, Program)
 CR.initilization()
@@ -370,9 +376,9 @@ from meteor_reasoner.utils.parser import parse_str_fact
 from meteor_reasoner.classes.atom import Atom
 from meteor_reasoner.canonical.utils import fact_entailment
 fact = "A(a)@-20"
-predicate, entity, interval = parse_str_fact(args.fact)
+predicate, entity, interval = parse_str_fact(fact)
 F = Atom(predicate, entity, interval)
-print("Entailment:", fact_entailment(D1, fact, common, left_period, left_len, right_period, right_len))
+print("Entailment:", fact_entailment(D1, F, common, left_period, left_len, right_period, right_len))
 ```
 The fact is not entailed by the given dataset and the program, so "Entailment: False" will be printed out.
 
