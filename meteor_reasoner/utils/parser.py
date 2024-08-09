@@ -125,7 +125,7 @@ def parse_str_fact(line):
                 try:
                     Decimal(span)
                     return predicate, entity, Interval(Decimal(span), Decimal(span), False, False)
-                except ValueError:
+                except decimal.InvalidOperation:
                     b = re.search(INTERVAL_ONE_POINT_PATTERN, span)
                     if b is None:
                         raise ValueError("The interval({}) can not be parsed correctly!".format(span))
