@@ -1,7 +1,7 @@
 from meteor_reasoner.utils.parser import *
 from collections import defaultdict
 import time, os, datetime
-import csv, json 
+import csv
 
 def load_dataset(file_or_path):
     """
@@ -72,22 +72,7 @@ def load_dataset(file_or_path):
                     entity = tuple([Term(const) for const in item[1:-2]])
                 D[predicate][entity].append(interval)
         return D
-     
 
-    elif isinstance(file_or_path, str) and file_or_path.endswith("json"):
-        print("The input data format is json!")
-        with open(file_or_path) as file:
-             json_data = json.load(file)
-             for key, values in json_data.items(): #values is a list
-                predicate = key
-                for fact in values: 
-                    # if no entity, please use "nan" as the entity_str
-                    for entity_str, intervals in fact.items():
-                        entity = tuple([Term(const) for const in entity_str.split(",")])
-                        intv = Interval(Decimal(intervals["left_value"]), Decimal(intervals["right_value"]), intervals["left_open"], intervals["right_open"])
-                        D[predicate][entity].append(intv)
-        return D
-    
     elif isinstance(file_or_path, str) and not file_or_path.endswith("csv"):
         with open(os.path.join(file_or_path)) as file:
             for line in file:

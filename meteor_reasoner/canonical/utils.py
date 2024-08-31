@@ -279,9 +279,7 @@ def find_periods(CR):
                     for interval1 in T:
                         diff_delta += Interval.diff(interval1, CR.D[head_predicate][head_entity])
 
-                for cr_interval in diff_delta: 
-                    if not Interval.is_valid_interval(cr_interval.left_value, cr_interval.right_value, cr_interval.left_open, cr_interval.right_open):
-                        continue 
+                for cr_interval in diff_delta:
                     if Interval.intersection(cr_interval, common_fragment.base_interval):
                         # it denotes that now |\varrho_max != Dnext |\varrho_max
                         common_fragment.cr_flag = False
