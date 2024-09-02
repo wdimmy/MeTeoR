@@ -7,7 +7,7 @@ from meteor_reasoner.utils.operate_dataset import print_dataset
 from meteor_reasoner.materialization.coalesce import coalescing_d
 
 
-def naive_join(rule, D, delta_new, D_index=None, must_literals=None):
+def naive_join(rule, D, delta_new, D_index=None):
     """
     This function implement the join operator when variables exist in the body of the rule.
     Args:
@@ -38,8 +38,6 @@ def naive_join(rule, D, delta_new, D_index=None, must_literals=None):
                     break
                 else:
                     T.append(t)
-                    if must_literals is not None:
-                        must_literals[grounded_literal] += t
             n_T = []
             for i in range(len(rule.body), len(literals)):
                 grounded_literal = copy.deepcopy(literals[i])
@@ -54,8 +52,6 @@ def naive_join(rule, D, delta_new, D_index=None, must_literals=None):
                     break
                 else:
                     n_T.append(t)
-                    if must_literals is not None:
-                        must_literals[grounded_literal] += t
 
             if len(n_T) > 0 and len(n_T) == len(rule.negative_body_atoms):
                 n_T = interval_merge(T)
@@ -94,13 +90,10 @@ def naive_join(rule, D, delta_new, D_index=None, must_literals=None):
                         tmp_D[head_predicate][replaced_head_entity] = T
                         tmp_head = copy.deepcopy(rule.head)
                         tmp_head.set_entity(replaced_head_entity)
-
-                        if must_literals is not None:
-                            must_literals[tmp_head] += T
                         T = reverse_apply(tmp_head, tmp_D)
+
                     delta_new[head_predicate][replaced_head_entity] += T
-                    if must_literals is not None:
-                        must_literals[Atom(head_predicate, replaced_head_entity)] += T
+
 
         else:
             current_literal = copy.deepcopy(literals[global_literal_index])

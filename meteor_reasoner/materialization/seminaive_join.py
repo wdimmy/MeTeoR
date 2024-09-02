@@ -7,7 +7,7 @@ from meteor_reasoner.utils.operate_dataset import print_dataset
 from meteor_reasoner.materialization.coalesce import coalescing_d
 
 
-def seminaive_join(rule, D,  delta_old, delta_new, D_index=None, must_literals=None):
+def seminaive_join(rule, D,  delta_old, delta_new, D_index=None):
     """
     This function implement the join operator when variables exist in the body of the rule.
     Args:
@@ -42,8 +42,6 @@ def seminaive_join(rule, D,  delta_old, delta_new, D_index=None, must_literals=N
                     break
                 else:
                     T.append(t)
-                    if must_literals is not None:
-                        must_literals[grounded_literal] += t
 
             n_T = []
             for i in range(len(rule.body), len(literals)):
@@ -94,14 +92,9 @@ def seminaive_join(rule, D,  delta_old, delta_new, D_index=None, must_literals=N
                         tmp_D[head_predicate][replaced_head_entity] = T
                         tmp_head = copy.deepcopy(rule.head)
                         tmp_head.set_entity(replaced_head_entity)
-                        if must_literals is not None:
-                            must_literals[tmp_head] += T
                         T = reverse_apply(tmp_head, tmp_D)
 
                     delta_new[head_predicate][replaced_head_entity] += T
-
-                    if must_literals is not None:
-                        must_literals[Atom(head_predicate, replaced_head_entity)] += T
 
         else:
             current_literal = copy.deepcopy(literals[global_literal_index])

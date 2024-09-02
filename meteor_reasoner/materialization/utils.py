@@ -43,7 +43,7 @@ def literal_contain_no_variable(literal):
                 return True
 
 
-def split_rules_predicates(program):
+def split_rules_predicates(program, target_predicate):
     """
     This function split all rules in the given program into non-recursive rules and recursive rules.
     Besides, this function also split all predicates in the given program into involved predicates and automata predicated.
@@ -61,7 +61,7 @@ def split_rules_predicates(program):
     """
     graph = Graph(program)
 
-    non_recursive_rules, automata_rules = graph.split_rules("a1:FullProfessor")
+    non_recursive_rules, automata_rules = graph.split_rules(target_predicate)
     involved_predicates = set()
     automata_predicates = set()
 

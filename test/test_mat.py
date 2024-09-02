@@ -18,7 +18,7 @@ def test_naive_mat():
     Program = [rule]
 
     start_time = time.time()
-    flag,_ = materialize(D, Program, K=10)
+    flag = materialize(D, Program, mode="naive", K=10)
     end_time = time.time()
     print("flag:", flag)
     print("naive run time:", end_time-start_time)
@@ -42,9 +42,13 @@ def test_seminaive_mat():
     Program = [rule]
 
     start_time = time.time()
-    flag, _ = materialize(D, Program, seminaive=True, K=10)
+    flag = materialize(D, Program, K=10)
     end_time = time.time()
     print("flag:", flag)
     print("seminaive run time:", end_time - start_time)
-    print("Naive:")
+    print("Seminaive:")
     print_dataset(D)
+
+if __name__ == "__main__":
+    test_naive_mat()
+    test_seminaive_mat()

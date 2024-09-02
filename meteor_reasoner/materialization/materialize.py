@@ -94,7 +94,7 @@ def naive_combine(D, delta_new, D_index=None):
     return fixpoint
 
 
-def materialize(D, rules, mode="seminaive", K=100, logger=None, must_literals=None, metrics=None):
+def materialize(D, rules, mode="seminaive", K=100, logger=None, metrics=None):
     """
     The function implements the materialization operation.
     Args:

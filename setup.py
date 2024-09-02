@@ -19,7 +19,7 @@ with open(path.join(here, 'README.md'), encoding='utf-8') as f:
 
 
 setup(name='meteor_reasoner',
-      version="1.0.14",
+      version="2.0.0",
       description='A Metric Temporal Reasoner',
       url='https://github.com/wdimmy/MeTeoR',
       author='Dingmin Wang',
