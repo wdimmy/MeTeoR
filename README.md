@@ -218,7 +218,7 @@ name(ID8,ID9)@[5,22]
 
 <span id="dothers"/>
 
-[Generated LUBM Dataset](https://rulerag.s3.eu-north-1.amazonaws.com/lubm_data.zip) 
+Generated LUBM Dataset: [Download](https://rulerag.s3.eu-north-1.amazonaws.com/lubm_data.zip) 
 
 ##### 3.1.3 Other available datasets applicable to DatalogMTL
 
@@ -228,7 +228,7 @@ For the dataset generation based on the iItemporal platform, we refer readers to
 and an easy-to-configure file have been provided for the data generation. A more technical
 details about iTemporal can also be found in their [ICDE 2022](https://ieeexplore.ieee.org/document/9835220). 
 
-[Generated iTemporal Dataset](https://rulerag.s3.eu-north-1.amazonaws.com/iTemporal_data.zip) 
+Generated iTemporal Dataset: [Download](https://rulerag.s3.eu-north-1.amazonaws.com/iTemporal_data.zip) 
 
 ##### Meteorological Benchmark
 It is a freely available dataset with meteorological observations over the years 1949–2010. The original
