@@ -100,7 +100,7 @@ def seminaive_join(rule, D,  delta_old, delta_new, D_index=None):
             current_literal = copy.deepcopy(literals[global_literal_index])
             if not isinstance(current_literal, BinaryLiteral):
                 if current_literal.get_predicate() in ["Bottom", "Top"]:
-                    ground_body(global_literal_index+1, delta, context)
+                    ground_body(global_literal_index+1, visited, delta, context)
                 else:
                     for tmp_entity, tmp_context in ground_generator(current_literal, context, D, D_index, delta_old, global_literal_index==visited, global_literal_index > visited):
                         tmp_delata = {global_literal_index: [tmp_entity]}

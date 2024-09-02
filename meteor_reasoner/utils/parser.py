@@ -59,11 +59,8 @@ def parse_rule(line):
                 raise Exception("{} has an incorrect syntax!".format(literal_str))
             negative_body.append(literal)
 
-    ordered_literals = []
-    for literal in literals:
-        if isinstance(literal, BinaryLiteral):
-            ordered_literals.append(literal)
-            literals.remove(literal)
+    ordered_literals    = [ lit for lit in literals if isinstance(lit, BinaryLiteral) ]
+    literals = [ lit for lit in literals if not ( lit in ordered_literals ) ]
     literals = sorted(literals, key=lambda item: len(item.get_entity()), reverse=True)
     ordered_literals = ordered_literals + literals
     rule = Rule(head_atom, ordered_literals, negative_body=negative_body)
@@ -81,7 +78,7 @@ def parse_str_fact(line):
             try:
                 Decimal(span)
                 return predicate, entity, Interval(Decimal(span), Decimal(span), False, False)
-            except ValueError:
+            except decimal.InvalidOperation:
                 b = re.search(INTERVAL_ONE_POINT_PATTERN, span)
                 if b is None:
                     raise ValueError("The interval can not be parsed correctly!")
@@ -128,7 +125,7 @@ def parse_str_fact(line):
                 try:
                     Decimal(span)
                     return predicate, entity, Interval(Decimal(span), Decimal(span), False, False)
-                except ValueError:
+                except decimal.InvalidOperation:
                     b = re.search(INTERVAL_ONE_POINT_PATTERN, span)
                     if b is None:
                         raise ValueError("The interval({}) can not be parsed correctly!".format(span))
